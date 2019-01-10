@@ -82,7 +82,7 @@ Render in .latte:
 		{control table}
 	</div>
 	
-![Translate Modal](src/Doc/image1.PNG?raw=true)
+![Table](src/Doc/image1.PNG?raw=true)
 
 
 #### EntityTable
