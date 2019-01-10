@@ -1,0 +1,36 @@
+{
+  "name": "bajzany/table",
+  "type": "extensions",
+  "description": "Table for Nette Framework",
+  "keywords": ["table"],
+  "homepage": "https://github.com/bajzany/Table",
+  "license": [],
+  "authors": [
+    {
+      "name": "Radek Zíka",
+      "homepage": "http://dipcom.cz",
+      "email": "radek.zika@dipcom.cz"
+    }
+  ],
+  "support": {
+    "email": "radek.zika@dipcom.cz",
+    "issues": "https://github.com/bajzany/Table"
+  },
+  "require": {
+    "php": "^7.2",
+    "nette/di": "^2.4",
+    "nette/application": "^2.4",
+    "nette/bootstrap": "^2.4",
+    "latte/latte": "^2.4",
+    "nette/utils": "^2.4",
+    "chomenko/app-webloader": "@dev",
+    "kdyby/events": "^3.1",
+    "kdyby/doctrine": "^3.3",
+    "bajzany/paginator": "@dev"
+  },
+  "autoload": {
+    "psr-4": {
+      "Bajzany\\Table\\": "src/"
+    }
+  }
+}
