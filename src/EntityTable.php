@@ -74,7 +74,6 @@ class EntityTable extends Table
 		$this->queryBuilder = $this->entityRepository->createQueryBuilder('e');
 
 		$this->paginator = new QueryPaginator();
-
 	}
 
 	/**
@@ -95,7 +94,6 @@ class EntityTable extends Table
 		$this->getTableWrapped()->render();
 
 		$this->emitPostRender();
-
 	}
 
 	/**
@@ -134,7 +132,7 @@ class EntityTable extends Table
 
 		foreach ($this->getColumns() as $column) {
 			$item = $header->createItem();
-			$item->setText($column->getLabel());
+			$item->setHtml($column->getLabel());
 
 			if (!empty($column->getHeaderItemCallable())) {
 				call_user_func_array($column->getHeaderItemCallable(), [$item]);
@@ -153,8 +151,9 @@ class EntityTable extends Table
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
 
-				if (!empty($column->getBodyItemCallable())) {
-					call_user_func_array($column->getBodyItemCallable(), [$item, $entity]);
+				$callable = $column->getBodyItemCallable();
+				if (!empty($callable)) {
+					call_user_func_array($callable, [$item, $entity]);
 				}
 			}
 		}
@@ -177,14 +176,28 @@ class EntityTable extends Table
 				}
 
 				$value = $origin[$key["name"]];
+				$value = $this->applyFilters($column, $value);
 				$templateKeys[$i]["translate"] = $value;
 			}
 
 			foreach ($templateKeys as $key) {
 				$labelItem = str_replace($key["search"], $key["translate"], $labelItem);
 			}
-			$item->setText($labelItem);
+			$item->setHtml($labelItem);
 		}
+	}
+
+	/**
+	 * @param Column $column
+	 * @param mixed $value
+	 * @return mixed
+	 */
+	private function applyFilters(Column $column, $value)
+	{
+		foreach ($column->getFilters() as $filter) {
+			$value = call_user_func_array($filter["callable"], array_merge([$value, $column], $filter["config"]));
+		}
+		return $value;
 	}
 
 	private function createFooter()
@@ -192,7 +205,7 @@ class EntityTable extends Table
 		$footer = $this->getTableWrapped()->getFooter();
 		foreach ($this->getColumns() as $column) {
 			$item = $footer->createItem();
-			$item->setText($column->getFooter());
+			$item->setHtml($column->getFooter());
 
 			if (!empty($column->getFooterItemCallable())) {
 				call_user_func_array($column->getFooterItemCallable(), [$item]);

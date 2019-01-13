@@ -11,6 +11,7 @@ use Nette\Application\UI\Control;
 
 class Column
 {
+
 	/**
 	 * @var string
 	 */
@@ -47,9 +48,14 @@ class Column
 	private $components = [];
 
 	/**
+	 * @var array
+	 */
+	private $filters = [];
+
+	/**
 	 * @return string
 	 */
-	public function getLabel(): string
+	public function getLabel(): ?string
 	{
 		return $this->label;
 	}
@@ -79,6 +85,28 @@ class Column
 	public function setPattern($pattern)
 	{
 		$this->pattern = $pattern;
+		return $this;
+	}
+
+	/**
+	 * @return callable[][]
+	 */
+	public function getFilters(): array
+	{
+		return $this->filters;
+	}
+
+	/**
+	 * @param callable $filter
+	 * @param array $config
+	 * @return $this
+	 */
+	public function addFilter(callable $filter, array $config = [])
+	{
+		$this->filters[] = [
+			"callable" => $filter,
+			"config" => $config,
+		];
 		return $this;
 	}
 
@@ -169,4 +197,5 @@ class Column
 	{
 		$this->components[] = $control;
 	}
+
 }
