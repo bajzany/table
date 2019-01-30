@@ -54,7 +54,11 @@ class Header extends TableHtml
 	{
 		return $this->rowWrapped->getChildren();
 	}
-	
+
+	/**
+	 * @param null|string $title
+	 * @return HeaderItem
+	 */
 	public function createItem($title = NULL)
 	{
 		$item = new HeaderItem();

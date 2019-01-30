@@ -40,4 +40,20 @@ class TableException extends \Exception
 	{
 		return new self("Field {$field} doesn't exist in {$className}");
 	}
+
+	/**
+	 * @return TableException
+	 */
+	public static function tableNotExecute()
+	{
+		return new self("Table is not executed.");
+	}
+
+	/**
+	 * @return TableException
+	 */
+	public static function columnKeyExist(string $key)
+	{
+		return new self("Column key '{$key}' exists.");
+	}
 }

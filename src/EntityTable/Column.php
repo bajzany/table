@@ -7,10 +7,24 @@
 
 namespace Bajzany\Table\EntityTable;
 
+use Bajzany\Table\Events\Listener;
 use Nette\Application\UI\Control;
 
 class Column
 {
+	const ON_HEADER_CREATE = "onHeaderCreate";
+	const ON_BODY_CREATE = "onBodyCreate";
+	const ON_FOOTER_CREATE = "onFooterCreate";
+
+	/**
+	 * @var string
+	 */
+	private $key;
+
+	/**
+	 * @var Listener
+	 */
+	private $listener;
 
 	/**
 	 * @var string
@@ -28,21 +42,6 @@ class Column
 	private $pattern;
 
 	/**
-	 * @var callable|null
-	 */
-	private $bodyItemCallable;
-
-	/**
-	 * @var callable|null
-	 */
-	private $headerItemCallable;
-
-	/**
-	 * @var callable|null
-	 */
-	private $footerItemCallable;
-
-	/**
 	 * @var Control[]
 	 */
 	private $components = [];
@@ -51,6 +50,61 @@ class Column
 	 * @var array
 	 */
 	private $filters = [];
+
+	/**
+	 * @param string $key
+	 */
+	public function __construct(string $key)
+	{
+		$this->key = $key;
+		$this->listener = new Listener();
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getKey(): string
+	{
+		return $this->key;
+	}
+
+	/**
+	 * @return Listener
+	 */
+	public function getListener(): Listener
+	{
+		return $this->listener;
+	}
+
+	/**
+	 * @param callable $callable
+	 * @return $this
+	 */
+	public function onHeaderCreate(callable $callable)
+	{
+		$this->listener->create(self::ON_HEADER_CREATE, $callable);
+		return $this;
+	}
+
+	/**
+	 * @param callable $callable
+	 * @return $this
+	 */
+	public function onBodyCreate(callable $callable)
+	{
+		$this->listener->create(self::ON_BODY_CREATE, $callable);
+		return $this;
+	}
+
+	/**
+	 * @param callable $callable
+	 * @return $this
+	 */
+	public function onFooterCreate(callable $callable)
+	{
+		$this->listener->create(self::ON_FOOTER_CREATE, $callable);
+		return $this;
+	}
 
 	/**
 	 * @return string
@@ -107,60 +161,6 @@ class Column
 			"callable" => $filter,
 			"config" => $config,
 		];
-		return $this;
-	}
-
-	/**
-	 * @return callable|null
-	 */
-	public function getBodyItemCallable(): ?callable
-	{
-		return $this->bodyItemCallable;
-	}
-
-	/**
-	 * @param callable|null $bodyItemCallable
-	 * @return $this
-	 */
-	public function setBodyItemCallable($bodyItemCallable)
-	{
-		$this->bodyItemCallable = $bodyItemCallable;
-		return $this;
-	}
-
-	/**
-	 * @return callable|null
-	 */
-	public function getHeaderItemCallable(): ?callable
-	{
-		return $this->headerItemCallable;
-	}
-
-	/**
-	 * @param callable|null $headerItemCallable
-	 * @return $this
-	 */
-	public function setHeaderItemCallable($headerItemCallable)
-	{
-		$this->headerItemCallable = $headerItemCallable;
-		return $this;
-	}
-
-	/**
-	 * @return callable|null
-	 */
-	public function getFooterItemCallable(): ?callable
-	{
-		return $this->footerItemCallable;
-	}
-
-	/**
-	 * @param callable|null $footerItemCallable
-	 * @return $this
-	 */
-	public function setFooterItemCallable($footerItemCallable)
-	{
-		$this->footerItemCallable = $footerItemCallable;
 		return $this;
 	}
 

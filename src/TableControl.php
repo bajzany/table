@@ -35,7 +35,7 @@ class TableControl extends Control
 
 	public function render()
 	{
-		$this->table->execute();
+		$this->table->execute($this);
 	}
 	
 	public function attached($presenter)

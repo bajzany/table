@@ -7,10 +7,18 @@
 
 namespace Bajzany\Table\TableObjects;
 
+use Bajzany\Table\ITable;
+use Bajzany\Table\Table;
 use Bajzany\Table\TableHtml;
 
 class TableWrapped extends TableHtml
 {
+
+	/**
+	 * @var ITable
+	 */
+	private $table;
+
 	/**
 	 * @var Header
 	 */
@@ -31,8 +39,9 @@ class TableWrapped extends TableHtml
 	 */
 	private $caption;
 
-	public function __construct()
+	public function __construct(ITable $table)
 	{
+		$this->table = $table;
 		$this->header = new Header();
 		$this->body = new Body();
 		$this->footer = new Footer();
@@ -97,5 +106,13 @@ class TableWrapped extends TableHtml
 	public function getFooter(): Footer
 	{
 		return $this->footer;
+	}
+
+	/**
+	 * @return ITable
+	 */
+	public function getTable()
+	{
+		return $this->table;
 	}
 }

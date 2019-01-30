@@ -79,11 +79,14 @@ class EntityTable extends Table
 	/**
 	 * @throws TableException
 	 */
-	public function execute()
+	public function execute(TableControl $control)
 	{
+
 		if (!$this->isBuild()) {
 			throw TableException::notBuild(get_class($this));
 		}
+
+		$this->control = $control;
 
 		$this->emitPreRender();
 
@@ -133,11 +136,8 @@ class EntityTable extends Table
 		foreach ($this->getColumns() as $column) {
 			$item = $header->createItem();
 			$item->setHtml($column->getLabel());
-
-			if (!empty($column->getHeaderItemCallable())) {
-				call_user_func_array($column->getHeaderItemCallable(), [$item]);
-			}
-
+			$listiner = $column->getListener();
+			$listiner->emit(Column::ON_HEADER_CREATE, $item);
 		}
 	}
 
@@ -150,12 +150,21 @@ class EntityTable extends Table
 			foreach ($this->getColumns() as $column) {
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
-
-				$callable = $column->getBodyItemCallable();
-				if (!empty($callable)) {
-					call_user_func_array($callable, [$item, $entity]);
-				}
+				$listiner = $column->getListener();
+				$listiner->emit(Column::ON_BODY_CREATE,$item, $entity);
 			}
+		}
+	}
+
+	private function createFooter()
+	{
+		$footer = $this->getTableWrapped()->getFooter();
+		foreach ($this->getColumns() as $column) {
+			$item = $footer->createItem();
+			$item->setHtml($column->getFooter());
+
+			$listiner = $column->getListener();
+			$listiner->emit(Column::ON_FOOTER_CREATE,$item);
 		}
 	}
 
@@ -200,20 +209,6 @@ class EntityTable extends Table
 		return $value;
 	}
 
-	private function createFooter()
-	{
-		$footer = $this->getTableWrapped()->getFooter();
-		foreach ($this->getColumns() as $column) {
-			$item = $footer->createItem();
-			$item->setHtml($column->getFooter());
-
-			if (!empty($column->getFooterItemCallable())) {
-				call_user_func_array($column->getFooterItemCallable(), [$item]);
-			}
-		}
-	}
-
-
 	/**
 	 * @return EntityManager
 	 */
@@ -257,12 +252,28 @@ class EntityTable extends Table
 	}
 
 	/**
+	 * @param string $key
+	 * @return Column|null
+	 */
+	public function getColumn(string $key): ?Column
+	{
+		if ($this->issetColumnKey($key)) {
+			return $this->columns[$key];
+		}
+		return NULL;
+	}
+
+	/**
 	 * @return Column
 	 */
-	public function createColumn()
+	public function createColumn(string $key)
 	{
-		$column = new Column();
-		$this->columns[] = $column;
+		if ($this->issetColumnKey($key)) {
+			throw TableException::columnKeyExist($key);
+		}
+
+		$column = new Column($key);
+		$this->columns[$key] = $column;
 		return $column;
 	}
 
@@ -272,6 +283,9 @@ class EntityTable extends Table
 	 */
 	public function addColumn(Column $column)
 	{
+		if ($this->issetColumnKey($column->getKey())) {
+			throw TableException::columnKeyExist($key);
+		}
 		$this->columns[] = $column;
 		return $this;
 	}
@@ -349,6 +363,18 @@ class EntityTable extends Table
 			];
 		}
 		return $keys;
+	}
+
+	/**
+	 * @param string $key
+	 * @return bool
+	 */
+	public function issetColumnKey(string $key): bool
+	{
+		if (array_key_exists($key, $this->columns)) {
+			return TRUE;
+		}
+		return FALSE;
 	}
 
 	/**

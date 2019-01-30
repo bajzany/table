@@ -55,7 +55,7 @@ class TableHtml extends Html
 	 * @return TableHtml
 	 * @throws TableException
 	 */
-	public function getTable()
+	public function getTableWrapped()
 	{
 		$parent = $this->getLastParent($this);
 
@@ -63,6 +63,15 @@ class TableHtml extends Html
 			throw TableException::notAttached();
 		}
 		return $parent;
+	}
+
+	/**
+	 * @return ITable
+	 * @throws TableException
+	 */
+	public function getTable()
+	{
+		return $this->getTableWrapped()->getTable();
 	}
 
 	/**

@@ -9,6 +9,7 @@ namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginator;
 use Bajzany\Paginator\Paginator;
+use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\TableWrapped;
 use Nette\ComponentModel\IContainer;
 
@@ -35,13 +36,18 @@ class Table implements ITable
 	protected $build = FALSE;
 
 	/**
+	 * @var TableControl
+	 */
+	protected $control;
+
+	/**
 	 * @var Paginator
 	 */
 	protected $paginator;
 
 	public function __construct()
 	{
-		$this->tableWrapped = new TableWrapped();
+		$this->tableWrapped = new TableWrapped($this);
 	}
 
 	/**
@@ -54,8 +60,12 @@ class Table implements ITable
 		return $this;
 	}
 
-	public function execute()
+	/**
+	 * @param TableControl $control
+	 */
+	public function execute(TableControl $control)
 	{
+		$this->control = $control;
 		$this->emitPreRender();
 		$this->getTableWrapped()->render();
 		$this->emitPostRender();
@@ -133,6 +143,26 @@ class Table implements ITable
 	public function getPaginator(): ?IPaginator
 	{
 		return $this->paginator;
+	}
+
+	/**
+	 * @return TableControl
+	 */
+	public function getControl(): TableControl
+	{
+		if (empty($this->control)) {
+			throw TableException::tableNotExecute();
+		}
+		return $this->control;
+	}
+
+	/**
+	 * @return \Nette\Application\UI\Presenter|null
+	 * @throws TableException
+	 */
+	public function getPresenter()
+	{
+		return $this->getControl()->getPresenter();
 	}
 
 }

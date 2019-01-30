@@ -18,7 +18,10 @@ interface ITable
 	 */
 	public function build(IContainer $container): ITable;
 
-	public function execute();
+	/**
+	 * @param TableControl $control
+	 */
+	public function execute(TableControl $control);
 
 	/**
 	 * @return bool
@@ -29,5 +32,15 @@ interface ITable
 	 * @return IPaginator|null
 	 */
 	public function getPaginator(): ?IPaginator;
+
+	/**
+	 * @return TableControl
+	 */
+	public function getControl(): TableControl;
+
+	/**
+	 * @return \Nette\Application\UI\Presenter|null
+	 */
+	public function getPresenter();
 
 }
