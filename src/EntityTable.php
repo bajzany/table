@@ -264,6 +264,17 @@ class EntityTable extends Table
 	}
 
 	/**
+	 * @param string $key
+	 */
+	public function removeColumn(string $key): void
+	{
+		if ($this->issetColumnKey($key)) {
+			unset($this->columns[$key]);
+		}
+	}
+
+
+	/**
 	 * @return Column
 	 */
 	public function createColumn(string $key)
