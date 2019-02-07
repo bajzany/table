@@ -15,6 +15,7 @@ use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
 use Kdyby\Doctrine\QueryBuilder;
 use Nette\ComponentModel\IContainer;
+use Nette\Utils\Html;
 
 class EntityTable extends Table
 {
@@ -186,12 +187,19 @@ class EntityTable extends Table
 
 				$value = $origin[$key["name"]];
 				$value = $this->applyFilters($column, $value);
+
 				$templateKeys[$i]["translate"] = $value;
 			}
 
 			foreach ($templateKeys as $key) {
-				$labelItem = str_replace($key["search"], $key["translate"], $labelItem);
+				$translate = $key['translate'];
+				if (!$translate instanceof Html) {
+					$translate = htmlspecialchars($translate);
+				}
+
+				$labelItem = str_replace($key["search"], $translate, $labelItem);
 			}
+
 			$item->setHtml($labelItem);
 		}
 	}
