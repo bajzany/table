@@ -9,11 +9,16 @@ namespace Bajzany\Table;
 
 use Bajzany\Paginator\QueryPaginator;
 use Bajzany\Table\EntityTable\Column;
+use Bajzany\Table\EntityTable\IColumn;
+use Bajzany\Table\EntityTable\ISearchColumn;
+use Bajzany\Table\EntityTable\SearchSelectColumn;
+use Bajzany\Table\EntityTable\SearchTextColumn;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
 use Kdyby\Doctrine\QueryBuilder;
+use Nette\Application\UI\Presenter;
 use Nette\ComponentModel\IContainer;
 use Nette\Utils\Html;
 
@@ -33,7 +38,7 @@ class EntityTable extends Table
 	private $entities = [];
 
 	/**
-	 * @var Column[]
+	 * @var IColumn[]
 	 */
 	private $columns = [];
 
@@ -82,12 +87,9 @@ class EntityTable extends Table
 	 */
 	public function execute(TableControl $control)
 	{
-
 		if (!$this->isBuild()) {
 			throw TableException::notBuild(get_class($this));
 		}
-
-		$this->control = $control;
 
 		$this->emitPreRender();
 
@@ -109,6 +111,27 @@ class EntityTable extends Table
 		if ($this->isBuild()) {
 			return $this;
 		}
+		$this->control = $container;
+
+		$this->buildQuery($container);
+		return parent::build($container);
+	}
+
+	/**
+	 * @param IContainer $container
+	 */
+	private function buildQuery(IContainer $container)
+	{
+		/**
+		 * SEARCH COLUMN BUILD AND EXECUTE EVENTS
+		 */
+		foreach ($this->getColumns() as $column) {
+			if (!$column instanceof ISearchColumn) {
+				continue;
+			}
+
+			$column->build($this);
+		}
 
 		$this->queryBuilder->whereCriteria($this->getWhere());
 		foreach ($this->getSort() as $by => $sort) {
@@ -126,8 +149,6 @@ class EntityTable extends Table
 		}
 
 		$this->entities = $query->getResult();
-
-		return parent::build($container);
 	}
 
 	private function createHeader()
@@ -136,9 +157,14 @@ class EntityTable extends Table
 
 		foreach ($this->getColumns() as $column) {
 			$item = $header->createItem();
-			$item->setHtml($column->getLabel());
+			if ($column instanceof ISearchColumn) {
+				$column->render($item);
+			} else {
+				$item->setHtml($column->getLabel());
+			}
+
 			$listiner = $column->getListener();
-			$listiner->emit(Column::ON_HEADER_CREATE, $item);
+			$listiner->emit(Column::ON_HEADER_CREATE, $item, $column);
 		}
 	}
 
@@ -149,6 +175,7 @@ class EntityTable extends Table
 			$row = $body->createRow();
 			$origin = $this->getEntityManager()->getUnitOfWork()->getOriginalEntityData($entity);
 			foreach ($this->getColumns() as $column) {
+
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
 				$listiner = $column->getListener();
@@ -170,12 +197,12 @@ class EntityTable extends Table
 	}
 
 	/**
-	 * @param Column $column
+	 * @param IColumn $column
 	 * @param array $origin
 	 * @param Item $item
 	 * @throws TableException
 	 */
-	private function usePattern(Column $column, array $origin, Item $item)
+	private function usePattern(IColumn $column, array $origin, Item $item)
 	{
 		if (!empty($column->getPattern())) {
 			$labelItem = $column->getPattern();
@@ -205,11 +232,11 @@ class EntityTable extends Table
 	}
 
 	/**
-	 * @param Column $column
+	 * @param IColumn $column
 	 * @param mixed $value
 	 * @return mixed
 	 */
-	private function applyFilters(Column $column, $value)
+	private function applyFilters(IColumn $column, $value)
 	{
 		foreach ($column->getFilters() as $filter) {
 			$value = call_user_func_array($filter["callable"], array_merge([$value, $column], $filter["config"]));
@@ -281,9 +308,10 @@ class EntityTable extends Table
 		}
 	}
 
-
 	/**
+	 * @param string $key
 	 * @return Column
+	 * @throws TableException
 	 */
 	public function createColumn(string $key)
 	{
@@ -297,13 +325,46 @@ class EntityTable extends Table
 	}
 
 	/**
-	 * @param Column $column
-	 * @return $this
+	 * @param string $key
+	 * @return SearchTextColumn
+	 * @throws TableException
 	 */
-	public function addColumn(Column $column)
+	public function createSearchTextColumn(string $key)
+	{
+		if ($this->issetColumnKey($key)) {
+			throw TableException::columnKeyExist($key);
+		}
+
+		$column = new SearchTextColumn($key);
+		$this->columns[$key] = $column;
+		return $column;
+	}
+
+	/**
+	 * @param string $key
+	 * @return SearchSelectColumn
+	 * @throws TableException
+	 */
+	public function createSearchSelectColumn(string $key)
+	{
+		if ($this->issetColumnKey($key)) {
+			throw TableException::columnKeyExist($key);
+		}
+
+		$column = new SearchSelectColumn($key);
+		$this->columns[$key] = $column;
+		return $column;
+	}
+
+	/**
+	 * @param IColumn $column
+	 * @return $this
+	 * @throws TableException
+	 */
+	public function addColumn(IColumn $column)
 	{
 		if ($this->issetColumnKey($column->getKey())) {
-			throw TableException::columnKeyExist($key);
+			throw TableException::columnKeyExist($column->getKey());
 		}
 		$this->columns[] = $column;
 		return $this;
@@ -402,6 +463,26 @@ class EntityTable extends Table
 	public function getQueryBuilder(): QueryBuilder
 	{
 		return $this->queryBuilder;
+	}
+
+	/**
+	 * @param IContainer $control
+	 * @param string $name
+	 * @return string
+	 */
+	public function getComponentName(IContainer $control, string $name = '')
+	{
+		if ($control instanceof Presenter) {
+			return $name;
+		}
+
+		if (empty($name)) {
+			$controlName = $control->getName();
+		} else {
+			$controlName = $control->getName() . '-' . $name;
+		}
+
+		return $this->getComponentName($control->getParent(), $controlName);
 	}
 
 }

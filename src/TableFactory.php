@@ -36,6 +36,7 @@ class TableFactory
 		$this->entityManager = $entityManager;
 		$collection = $appWebLoader->createCollection("bajzanyTable");
 		$collection->addScript(__DIR__ . "/template/table.js");
+		$collection->addStyles(__DIR__ . "/template/table.less");
 	}
 
 	/**

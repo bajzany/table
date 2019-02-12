@@ -26,7 +26,8 @@
     "chomenko/app-webloader": "@dev",
     "kdyby/events": "^3.1",
     "kdyby/doctrine": "^3.3",
-    "bajzany/paginator": "@dev"
+    "bajzany/paginator": "@dev",
+    "bajzany/stagejs": "@dev"
   },
   "autoload": {
     "psr-4": {

@@ -8,6 +8,8 @@
 namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginator;
+use Nette\Application\UI\Control;
+use Nette\Application\UI\Presenter;
 use Nette\ComponentModel\IContainer;
 
 interface ITable

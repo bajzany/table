@@ -10,7 +10,7 @@ namespace Bajzany\Table\EntityTable;
 use Bajzany\Table\Events\Listener;
 use Nette\Application\UI\Control;
 
-class Column
+class Column implements IColumn
 {
 	const ON_HEADER_CREATE = "onHeaderCreate";
 	const ON_BODY_CREATE = "onBodyCreate";
