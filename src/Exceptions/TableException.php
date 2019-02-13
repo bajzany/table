@@ -64,4 +64,13 @@ class TableException extends \Exception
 	{
 		return new self("Column key '{$key}' exists.");
 	}
+
+	/**
+	 * @return TableException
+	 */
+	public static function columnDriverKeyDontExist(string $key, string $arrayType)
+	{
+		return new self("ColumnDriver key '{$key}' doesn't exist in {$arrayType}.");
+	}
+
 }

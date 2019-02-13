@@ -96,4 +96,15 @@ interface IColumn
 	 */
 	public function addComponent(Control $control);
 
+	/**
+	 * @return bool
+	 */
+	public function isAllowRender(): bool;
+
+	/**
+	 * @param bool $render
+	 * @return $this
+	 */
+	public function setAllowRender(bool $render);
+
 }

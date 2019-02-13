@@ -52,6 +52,11 @@ class Column implements IColumn
 	private $filters = [];
 
 	/**
+	 * @var bool
+	 */
+	private $allowRender = TRUE;
+
+	/**
 	 * @param string $key
 	 */
 	public function __construct(string $key)
@@ -196,6 +201,24 @@ class Column implements IColumn
 	public function addComponent(Control $control)
 	{
 		$this->components[] = $control;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isAllowRender(): bool
+	{
+		return $this->allowRender;
+	}
+
+	/**
+	 * @param bool $allowRender
+	 * @return $this
+	 */
+	public function setAllowRender(bool $allowRender)
+	{
+		$this->allowRender = $allowRender;
+		return $this;
 	}
 
 }

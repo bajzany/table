@@ -7,6 +7,7 @@
 
 namespace Bajzany\Table\DI;
 
+use Bajzany\Table\ColumnDriver\IColumnDriverControl;
 use Bajzany\Table\ITableControl;
 use Bajzany\Table\TableFactory;
 use Nette\Configurator;
@@ -24,6 +25,9 @@ class TableExtensions extends CompilerExtension
 
 		$builder->addDefinition($this->prefix('tableControl'))
 			->setImplement(ITableControl::class);
+
+		$builder->addDefinition($this->prefix('columnDriver'))
+			->setImplement(IColumnDriverControl::class);
 	}
 
 	/**

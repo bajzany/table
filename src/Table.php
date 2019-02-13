@@ -9,6 +9,11 @@ namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginator;
 use Bajzany\Paginator\Paginator;
+use Bajzany\Table\ColumnDriver\ColumnDriver;
+use Bajzany\Table\EntityTable\Column;
+use Bajzany\Table\EntityTable\IColumn;
+use Bajzany\Table\EntityTable\SearchSelectColumn;
+use Bajzany\Table\EntityTable\SearchTextColumn;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\TableWrapped;
 use Nette\ComponentModel\IContainer;
@@ -45,9 +50,21 @@ class Table implements ITable
 	 */
 	protected $paginator;
 
+	/**
+	 * @var ColumnDriver
+	 */
+	protected $columnDriver;
+
+	/**
+	 * @var IColumn[]
+	 */
+	private $columns = [];
+
 	public function __construct()
 	{
 		$this->tableWrapped = new TableWrapped($this);
+		$this->paginator = new Paginator();
+		$this->columnDriver = new ColumnDriver();
 	}
 
 	/**
@@ -56,6 +73,8 @@ class Table implements ITable
 	 */
 	public function build(IContainer $container): ITable
 	{
+		$this->control = $container;
+		$container->getComponent(TableControl::COLUMN_DRIVER_NAME);
 		$this->build = TRUE;
 		return $this;
 	}
@@ -65,7 +84,6 @@ class Table implements ITable
 	 */
 	public function execute(TableControl $control)
 	{
-		$this->control = $control;
 		$this->emitPreRender();
 		$this->getTableWrapped()->render();
 		$this->emitPostRender();
@@ -74,14 +92,14 @@ class Table implements ITable
 	protected function emitPreRender()
 	{
 		foreach ($this->preRender as $event) {
-			call_user_func_array($event['callable'], [$this]);
+			call_user_func_array($event, [$this]);
 		}
 	}
 
 	protected function emitPostRender()
 	{
 		foreach ($this->postRender as $event) {
-			call_user_func_array($event['callable'], [$this]);
+			call_user_func_array($event, [$this]);
 		}
 	}
 
@@ -147,6 +165,7 @@ class Table implements ITable
 
 	/**
 	 * @return TableControl
+	 * @throws TableException
 	 */
 	public function getControl(): TableControl
 	{
@@ -164,5 +183,123 @@ class Table implements ITable
 	{
 		return $this->getControl()->getPresenter();
 	}
+
+	/**
+	 * @return ColumnDriver
+	 */
+	public function getColumnDriver(): ColumnDriver
+	{
+		return $this->columnDriver;
+	}
+
+	/**
+	 * @return IColumn[]
+	 */
+	public function getColumns(): array
+	{
+		return $this->columns;
+	}
+
+	/**
+	 * @param string $key
+	 * @return IColumn|null
+	 */
+	public function getColumn(string $key): ?IColumn
+	{
+		if ($this->issetColumnKey($key)) {
+			return $this->columns[$key];
+		}
+		return NULL;
+	}
+
+	/**
+	 * @param string $key
+	 */
+	public function removeColumn(string $key): void
+	{
+		if ($this->issetColumnKey($key)) {
+			unset($this->columns[$key]);
+			$this->columnDriver->removeAvailableColumn($key);
+		}
+	}
+
+	/**
+	 * @param string $key
+	 * @return Column
+	 * @throws TableException
+	 */
+	public function createColumn(string $key)
+	{
+		if ($this->issetColumnKey($key)) {
+			throw TableException::columnKeyExist($key);
+		}
+
+		$column = new Column($key);
+		$this->columns[$key] = $column;
+		$this->columnDriver->addAvailableColumn($key, $column);
+		return $column;
+	}
+
+	/**
+	 * @param string $key
+	 * @return SearchTextColumn
+	 * @throws TableException
+	 */
+	public function createSearchTextColumn(string $key)
+	{
+		if ($this->issetColumnKey($key)) {
+			throw TableException::columnKeyExist($key);
+		}
+
+		$column = new SearchTextColumn($key);
+		$this->columns[$key] = $column;
+		$this->columnDriver->addAvailableColumn($key, $column);
+		return $column;
+	}
+
+	/**
+	 * @param string $key
+	 * @return SearchSelectColumn
+	 * @throws TableException
+	 */
+	public function createSearchSelectColumn(string $key)
+	{
+		if ($this->issetColumnKey($key)) {
+			throw TableException::columnKeyExist($key);
+		}
+
+		$column = new SearchSelectColumn($key);
+		$this->columns[$key] = $column;
+		$this->columnDriver->addAvailableColumn($key, $column);
+		return $column;
+	}
+
+	/**
+	 * @param IColumn $column
+	 * @return $this
+	 * @throws TableException
+	 */
+	public function addColumn(IColumn $column)
+	{
+		if ($this->issetColumnKey($column->getKey())) {
+			throw TableException::columnKeyExist($column->getKey());
+		}
+		$this->columns[$column->getKey()] = $column;
+		$this->columnDriver->addAvailableColumn($column->getKey(), $column);
+		return $this;
+	}
+
+	/**
+	 * @param string $key
+	 * @return bool
+	 */
+	public function issetColumnKey(string $key): bool
+	{
+		if (array_key_exists($key, $this->columns)) {
+			return TRUE;
+		}
+		return FALSE;
+	}
+
 
 }

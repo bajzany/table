@@ -8,8 +8,8 @@
 namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginator;
-use Nette\Application\UI\Control;
-use Nette\Application\UI\Presenter;
+use Bajzany\Table\ColumnDriver\ColumnDriver;
+use Bajzany\Table\EntityTable\IColumn;
 use Nette\ComponentModel\IContainer;
 
 interface ITable
@@ -36,6 +36,11 @@ interface ITable
 	public function getPaginator(): ?IPaginator;
 
 	/**
+	 * @return ColumnDriver
+	 */
+	public function getColumnDriver(): ColumnDriver;
+
+	/**
 	 * @return TableControl
 	 */
 	public function getControl(): TableControl;
@@ -44,5 +49,32 @@ interface ITable
 	 * @return \Nette\Application\UI\Presenter|null
 	 */
 	public function getPresenter();
+
+	/**
+	 * @param callable $preRender
+	 */
+	public function addPreRender(callable $preRender);
+
+	/**
+	 * @param callable $preRender
+	 */
+	public function addPostRender(callable $preRender);
+
+	/**
+	 * @return IColumn[]
+	 */
+	public function getColumns(): array;
+
+	/**
+	 * @param string $key
+	 * @return mixed
+	 */
+	public function removeColumn(string $key): void;
+
+	/**
+	 * @param string $key
+	 * @return IColumn|null
+	 */
+	public function getColumn(string $key): ?IColumn;
 
 }

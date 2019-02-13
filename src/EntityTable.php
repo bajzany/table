@@ -38,11 +38,6 @@ class EntityTable extends Table
 	private $entities = [];
 
 	/**
-	 * @var IColumn[]
-	 */
-	private $columns = [];
-
-	/**
 	 * @var EntityManager
 	 */
 	protected $entityManager;
@@ -111,6 +106,7 @@ class EntityTable extends Table
 		if ($this->isBuild()) {
 			return $this;
 		}
+
 		$this->control = $container;
 
 		$this->buildQuery($container);
@@ -156,6 +152,9 @@ class EntityTable extends Table
 		$header = $this->getTableWrapped()->getHeader();
 
 		foreach ($this->getColumns() as $column) {
+			if (!$column->isAllowRender()) {
+				continue;
+			}
 			$item = $header->createItem();
 			if ($column instanceof ISearchColumn) {
 				$column->render($item);
@@ -175,6 +174,9 @@ class EntityTable extends Table
 			$row = $body->createRow();
 			$origin = $this->getEntityManager()->getUnitOfWork()->getOriginalEntityData($entity);
 			foreach ($this->getColumns() as $column) {
+				if (!$column->isAllowRender()) {
+					continue;
+				}
 
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
@@ -188,6 +190,9 @@ class EntityTable extends Table
 	{
 		$footer = $this->getTableWrapped()->getFooter();
 		foreach ($this->getColumns() as $column) {
+			if (!$column->isAllowRender()) {
+				continue;
+			}
 			$item = $footer->createItem();
 			$item->setHtml($column->getFooter());
 
@@ -278,97 +283,7 @@ class EntityTable extends Table
 		return $this->entities;
 	}
 
-	/**
-	 * @return Column[]
-	 */
-	public function getColumns(): array
-	{
-		return $this->columns;
-	}
 
-	/**
-	 * @param string $key
-	 * @return Column|null
-	 */
-	public function getColumn(string $key): ?Column
-	{
-		if ($this->issetColumnKey($key)) {
-			return $this->columns[$key];
-		}
-		return NULL;
-	}
-
-	/**
-	 * @param string $key
-	 */
-	public function removeColumn(string $key): void
-	{
-		if ($this->issetColumnKey($key)) {
-			unset($this->columns[$key]);
-		}
-	}
-
-	/**
-	 * @param string $key
-	 * @return Column
-	 * @throws TableException
-	 */
-	public function createColumn(string $key)
-	{
-		if ($this->issetColumnKey($key)) {
-			throw TableException::columnKeyExist($key);
-		}
-
-		$column = new Column($key);
-		$this->columns[$key] = $column;
-		return $column;
-	}
-
-	/**
-	 * @param string $key
-	 * @return SearchTextColumn
-	 * @throws TableException
-	 */
-	public function createSearchTextColumn(string $key)
-	{
-		if ($this->issetColumnKey($key)) {
-			throw TableException::columnKeyExist($key);
-		}
-
-		$column = new SearchTextColumn($key);
-		$this->columns[$key] = $column;
-		return $column;
-	}
-
-	/**
-	 * @param string $key
-	 * @return SearchSelectColumn
-	 * @throws TableException
-	 */
-	public function createSearchSelectColumn(string $key)
-	{
-		if ($this->issetColumnKey($key)) {
-			throw TableException::columnKeyExist($key);
-		}
-
-		$column = new SearchSelectColumn($key);
-		$this->columns[$key] = $column;
-		return $column;
-	}
-
-	/**
-	 * @param IColumn $column
-	 * @return $this
-	 * @throws TableException
-	 */
-	public function addColumn(IColumn $column)
-	{
-		if ($this->issetColumnKey($column->getKey())) {
-			throw TableException::columnKeyExist($column->getKey());
-		}
-		$this->columns[] = $column;
-		return $this;
-	}
 
 	/**
 	 * @return ObjectRepository
@@ -443,18 +358,6 @@ class EntityTable extends Table
 			];
 		}
 		return $keys;
-	}
-
-	/**
-	 * @param string $key
-	 * @return bool
-	 */
-	public function issetColumnKey(string $key): bool
-	{
-		if (array_key_exists($key, $this->columns)) {
-			return TRUE;
-		}
-		return FALSE;
 	}
 
 	/**

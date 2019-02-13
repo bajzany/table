@@ -8,6 +8,8 @@
 namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginationControl;
+use Bajzany\Table\ColumnDriver\ColumnDriverControl;
+use Bajzany\Table\ColumnDriver\IColumnDriverControl;
 use Bajzany\Table\Exceptions\TableException;
 use Nette\Application\UI\Control;
 
@@ -15,6 +17,7 @@ class TableControl extends Control
 {
 
 	const PAGINATOR_NAME = 'paginator';
+	const COLUMN_DRIVER_NAME = 'columnDriver';
 
 	/**
 	 * @var ITable
@@ -26,11 +29,17 @@ class TableControl extends Control
 	 */
 	private $paginationControl;
 
-	public function __construct(ITable $table, IPaginationControl $paginationControl, $name = NULL)
+	/**
+	 * @var IColumnDriverControl
+	 */
+	private $columnDriver;
+
+	public function __construct(ITable $table, IPaginationControl $paginationControl, IColumnDriverControl $columnDriver, $name = NULL)
 	{
 		parent::__construct($name);
 		$this->table = $table;
 		$this->paginationControl = $paginationControl;
+		$this->columnDriver = $columnDriver;
 	}
 
 	public function render()
@@ -44,11 +53,16 @@ class TableControl extends Control
 		$this->table->build($this);
 	}
 
-
 	public function renderPaginator()
 	{
 		$paginatorComponent = $this->getComponent(self::PAGINATOR_NAME);
 		$paginatorComponent->render();
+	}
+
+	public function renderColumnDriver()
+	{
+		$columnDriverComponent = $this->getComponent(self::COLUMN_DRIVER_NAME);
+		$columnDriverComponent->render();
 	}
 
 	/**
@@ -66,6 +80,15 @@ class TableControl extends Control
 	}
 
 	/**
+	 * @return ColumnDriverControl
+	 */
+	public function createComponentColumnDriver()
+	{
+		return $this->columnDriver->create($this->table);
+	}
+
+
+	/**
 	 * @return ITable
 	 */
 	public function getTable(): ITable
@@ -79,6 +102,14 @@ class TableControl extends Control
 	public function getPaginationControl(): IPaginationControl
 	{
 		return $this->paginationControl;
+	}
+
+	/**
+	 * @return IColumnDriverControl
+	 */
+	public function getColumnDriver(): IColumnDriverControl
+	{
+		return $this->columnDriver;
 	}
 
 }
