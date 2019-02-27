@@ -172,16 +172,18 @@ class EntityTable extends Table
 		$body = $this->getTableWrapped()->getBody();
 		foreach ($this->entities as $entity) {
 			$row = $body->createRow();
+
 			$origin = $this->getEntityManager()->getUnitOfWork()->getOriginalEntityData($entity);
+			$identifiers = $this->getEntityManager()->getUnitOfWork()->getEntityIdentifier($entity);
+			$origin = array_merge($origin, $identifiers);
 			foreach ($this->getColumns() as $column) {
 				if (!$column->isAllowRender()) {
 					continue;
 				}
-
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
 				$listiner = $column->getListener();
-				$listiner->emit(Column::ON_BODY_CREATE,$item, $entity);
+				$listiner->emit(Column::ON_BODY_CREATE, $item, $entity);
 			}
 		}
 	}
