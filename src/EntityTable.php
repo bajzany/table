@@ -174,6 +174,9 @@ class EntityTable extends Table
 			$row = $body->createRow();
 
 			$origin = $this->getEntityManager()->getUnitOfWork()->getOriginalEntityData($entity);
+			if (empty($origin)) {
+				continue;
+			}
 			$identifiers = $this->getEntityManager()->getUnitOfWork()->getEntityIdentifier($entity);
 			$origin = array_merge($origin, $identifiers);
 			foreach ($this->getColumns() as $column) {
