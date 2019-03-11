@@ -1,8 +1,8 @@
 (function() {
 	var Table = {};
 
-	Table.init = function () {
-		var inputs = $(document).find(':input.searchTable');
+	Table.init = function (App, el) {
+		var inputs = $(el ? el :document).find(":input.searchTable");
 		$.each(inputs, function (i, input) {
 			$(this).on('change', function(e){
 				Table.sendSearch(this);
@@ -39,9 +39,15 @@
 		if (url) {
 			new Stage.Ajax({
 				url: url.toString(),
-				afterExecuteSnippets: function () {
-					Table.init();
-				}
+				actionsAfterExecuteSnippets: [
+					function (Ajax) {
+						var AjaxListener = Stage.App.getListener('AjaxListener');
+						$.each(Ajax.executedSnippets, function (name, el) {
+							Table.init(Stage.App, el);
+							AjaxListener.init(Stage.App, el)
+						});
+					}
+				],
 			});
 		}
 	};
