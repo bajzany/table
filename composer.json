@@ -23,11 +23,11 @@
     "nette/bootstrap": "^2.4",
     "latte/latte": "^2.4",
     "nette/utils": "^2.4",
-    "chomenko/app-webloader": "@dev",
+    "chomenko/app-webloader": "^1.0",
     "kdyby/events": "^3.1",
     "kdyby/doctrine": "^3.3",
-    "bajzany/paginator": "@dev",
-    "bajzany/stagejs": "@dev"
+    "bajzany/paginator": "^1.1",
+    "bajzany/stagejs": "^1.0"
   },
   "autoload": {
     "psr-4": {
