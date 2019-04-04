@@ -11,8 +11,6 @@ use Bajzany\Paginator\QueryPaginator;
 use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\EntityTable\ISearchColumn;
-use Bajzany\Table\EntityTable\SearchSelectColumn;
-use Bajzany\Table\EntityTable\SearchTextColumn;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
@@ -371,6 +369,14 @@ class EntityTable extends Table
 	public function getQueryBuilder(): QueryBuilder
 	{
 		return $this->queryBuilder;
+	}
+
+	/**
+	 * @param QueryBuilder $queryBuilder
+	 */
+	public function setQueryBuilder(QueryBuilder $queryBuilder)
+	{
+		$this->queryBuilder = $queryBuilder;
 	}
 
 	/**
