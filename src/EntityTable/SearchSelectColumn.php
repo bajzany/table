@@ -40,8 +40,8 @@ class SearchSelectColumn extends SearchColumn implements IColumn, ISearchColumn
 		if (empty($actions)) {
 			$metadata = $entityTable->getEntityManager()->getClassMetadata($entityTable->getEntityClass());
 			if (in_array($this->getKey(),$metadata->getFieldNames())) {
-				$entityTable->getQueryBuilder()->andWhere("e.{$this->getKey()} LIKE :value")
-					->setParameter('value', '%'.$this->getSelectedValue().'%');
+				$entityTable->getQueryBuilder()->andWhere("e.{$this->getKey()} LIKE :{$this->getKey()}")
+					->setParameter($this->getKey(), '%'.$this->getSelectedValue().'%');
 			}
 		}
 
