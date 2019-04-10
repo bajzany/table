@@ -39,7 +39,7 @@ class SearchSelectColumn extends SearchColumn implements IColumn, ISearchColumn
 
 		if (empty($actions)) {
 			$metadata = $entityTable->getEntityManager()->getClassMetadata($entityTable->getEntityClass());
-			if (in_array($this->getKey(),$metadata->getFieldNames())) {
+			if (in_array($this->getKey(), $metadata->getFieldNames())) {
 				$entityTable->getQueryBuilder()->andWhere("e.{$this->getKey()} LIKE :{$this->getKey()}")
 					->setParameter($this->getKey(), '%'.$this->getSelectedValue().'%');
 			}
@@ -75,10 +75,10 @@ class SearchSelectColumn extends SearchColumn implements IColumn, ISearchColumn
 		$defaultOption = TableHtml::el('option', ['value' => '']);
 		$defaultOption->setText($this->getKey());
 		$select->addHtml($defaultOption);
+
 		foreach ($this->getOptions() as $name => $title) {
 			$opt = TableHtml::el('option', ['value' => $name]);
-
-			if ($name == $defaultValue) {
+			if ($defaultValue !== NULL && $defaultValue !== '' && $name == $defaultValue) {
 				$opt->setAttribute('selected', true);
 			}
 
