@@ -29,19 +29,9 @@ class DropDown extends TableHtml implements HtmlElements
 	private $ulWrapped;
 
 	/**
-	 * @var Button
-	 */
-	private $button;
-
-	/**
 	 * @var TableHtml[]
 	 */
 	private $items = [];
-
-	public function __construct()
-	{
-		$this->button = new Button();
-	}
 
 	/**
 	 * @return DropDown
@@ -63,12 +53,11 @@ class DropDown extends TableHtml implements HtmlElements
 	{
 		$buttonTwo = TableHtml::el('button');
 		$buttonTwo->setAttribute('data-toggle','dropdown');
-		$buttonTwo->setAttribute('class',"{$this->getButton()->getClass()} dropdown-toggle");
+		$buttonTwo->setAttribute('class',"btn btn-default dropdown-toggle");
 
 		$buttonTwo->addHtml(TableHtml::el('span')->setAttribute('class','caret'));
 		$buttonTwo->addHtml(TableHtml::el('span')->setAttribute('class','sr-only')->setText('Toggle Dropdown'));
 		$wrapped = TableHtml::el()
-			->addHtml($this->getButton())
 			->addHtml($buttonTwo);
 
 		return $wrapped;
@@ -81,6 +70,7 @@ class DropDown extends TableHtml implements HtmlElements
 	{
 		$ul = TableHtml::el('ul');
 		$ul->setAttribute('class','dropdown-menu');
+		$ul->setAttribute('style','margin-left: -120px;');
 		$ul->setAttribute('role','menu');
 
 		foreach ($this->getItems() as $item) {
@@ -104,14 +94,6 @@ class DropDown extends TableHtml implements HtmlElements
 	public function getWrapped(): TableHtml
 	{
 		return $this->wrapped;
-	}
-
-	/**
-	 * @return Button
-	 */
-	public function getButton(): Button
-	{
-		return $this->button;
 	}
 
 	/**
