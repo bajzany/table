@@ -20,6 +20,15 @@ class TableHtml extends Html
 	 */
 	private $parent;
 
+	/**
+	 * Returns all children.
+	 * @param $key
+	 */
+	public function removeChild($key)
+	{
+		 unset($this->children[$key]);
+	}
+
 	public function addHtml($child)
 	{
 		if ($child instanceof HtmlElements) {

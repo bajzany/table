@@ -12,6 +12,7 @@ use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\EntityTable\ISearchColumn;
 use Bajzany\Table\Exceptions\TableException;
+use Bajzany\Table\TableObjects\Footer;
 use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
@@ -89,6 +90,22 @@ class EntityTable extends Table
 		$this->createHeader();
 		$this->createBody();
 		$this->createFooter();
+
+		if (empty($this->getTableWrapped()->getFooter()->getItems())) {
+			foreach ($this->getTableWrapped()->getChildren() as $key => $child) {
+				if ($child instanceof Footer) {
+					$this->getTableWrapped()->removeChild($key);
+				}
+			}
+		}
+
+		if (empty($this->getTableWrapped()->getCaption()->getChildren())) {
+			foreach ($this->getTableWrapped()->getChildren() as $key => $child) {
+				if ($child instanceof TableHtml && $child->getName() == 'caption') {
+					$this->getTableWrapped()->removeChild($key);
+				}
+			}
+		}
 
 		$this->getTableWrapped()->render();
 
@@ -193,6 +210,10 @@ class EntityTable extends Table
 	{
 		$footer = $this->getTableWrapped()->getFooter();
 		foreach ($this->getColumns() as $column) {
+			if (!$column->getFooter()) {
+				continue;
+			}
+
 			if (!$column->isAllowRender()) {
 				continue;
 			}
