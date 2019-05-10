@@ -62,6 +62,11 @@ class EntityTable extends Table
 	private $queryBuilder;
 
 	/**
+	 * @var array
+	 */
+	protected $registerComponents = [];
+
+	/**
 	 * @param string $entityClass
 	 * @param EntityManager $entityManager
 	 */
@@ -418,6 +423,35 @@ class EntityTable extends Table
 		}
 
 		return $this->getComponentName($control->getParent(), $controlName);
+	}
+
+	/**
+	 * @param string $name
+	 * @param string $className
+	 */
+	public function addRegisterComponent(string $name, string $className)
+	{
+		$this->registerComponents[$name] = $className;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getRegisterComponents(): array
+	{
+		return $this->registerComponents;
+	}
+
+	/**
+	 * @param string $name
+	 * @return string
+	 */
+	public function getRegisterComponentByName(string $name): ?string
+	{
+		if (array_key_exists($name, $this->registerComponents)) {
+			return $this->registerComponents[$name];
+		}
+		return NULL;
 	}
 
 }
