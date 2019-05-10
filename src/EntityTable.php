@@ -457,12 +457,21 @@ class EntityTable extends Table
 	/**
 	 * @param string $name
 	 * @param int $entityId
-	 * @return \Nette\Application\UI\Control|\Nette\ComponentModel\IComponent|null
+	 * @return string
 	 * @throws TableException
 	 */
-	public function getComponent(string $name, int $entityId)
+	public function getComponentHtml(string $name, int $entityId)
 	{
-		return $this->getControl()->getComponent($name . '_' . $entityId, FALSE);
+		$component = $this->getControl()->getComponent($name . '_' . $entityId, FALSE);
+		if ($component && method_exists($component, 'render')) {
+			ob_start();
+			$component->render();
+			$output = ob_get_contents();
+			ob_end_clean();
+			return $output;
+		}
+
+		return '';
 	}
 
 }
