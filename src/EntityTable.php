@@ -454,4 +454,15 @@ class EntityTable extends Table
 		return NULL;
 	}
 
+	/**
+	 * @param string $name
+	 * @param int $entityId
+	 * @return \Nette\Application\UI\Control|\Nette\ComponentModel\IComponent|null
+	 * @throws TableException
+	 */
+	public function getComponent(string $name, int $entityId)
+	{
+		return $this->getControl()->getComponent($name . '_' . $entityId, FALSE);
+	}
+
 }
