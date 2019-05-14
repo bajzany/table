@@ -14,6 +14,7 @@ use Bajzany\Table\EntityTable\ISearchColumn;
 use Bajzany\Table\Events\Listener;
 use Bajzany\Table\Events\TableEvents;
 use Bajzany\Table\Exceptions\TableException;
+use Bajzany\Table\TableObjects\Footer;
 use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
@@ -72,6 +73,11 @@ class EntityTable extends Table
 	private $tableListener;
 
 	/**
+	 * @var array
+	 */
+	protected $registerComponents = [];
+
+	/**
 	 * @param string $entityClass
 	 * @param EntityManager $entityManager
 	 * @param TableEvents $tableEvents
@@ -113,6 +119,22 @@ class EntityTable extends Table
 		$this->createHeader();
 		$this->createBody();
 		$this->createFooter();
+
+		if (empty($this->getTableWrapped()->getFooter()->getItems())) {
+			foreach ($this->getTableWrapped()->getChildren() as $key => $child) {
+				if ($child instanceof Footer) {
+					$this->getTableWrapped()->removeChild($key);
+				}
+			}
+		}
+
+		if (empty($this->getTableWrapped()->getCaption()->getChildren())) {
+			foreach ($this->getTableWrapped()->getChildren() as $key => $child) {
+				if ($child instanceof TableHtml && $child->getName() == 'caption') {
+					$this->getTableWrapped()->removeChild($key);
+				}
+			}
+		}
 
 		$this->getTableWrapped()->render();
 
@@ -219,6 +241,10 @@ class EntityTable extends Table
 	{
 		$footer = $this->getTableWrapped()->getFooter();
 		foreach ($this->getColumns() as $column) {
+			if (!$column->getFooter()) {
+				continue;
+			}
+
 			if (!$column->isAllowRender()) {
 				continue;
 			}
@@ -423,6 +449,55 @@ class EntityTable extends Table
 		}
 
 		return $this->getComponentName($control->getParent(), $controlName);
+	}
+
+	/**
+	 * @param string $name
+	 * @param string $className
+	 */
+	public function addRegisterComponent(string $name, string $className)
+	{
+		$this->registerComponents[$name] = $className;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getRegisterComponents(): array
+	{
+		return $this->registerComponents;
+	}
+
+	/**
+	 * @param string $name
+	 * @return string
+	 */
+	public function getRegisterComponentByName(string $name): ?string
+	{
+		if (array_key_exists($name, $this->registerComponents)) {
+			return $this->registerComponents[$name];
+		}
+		return NULL;
+	}
+
+	/**
+	 * @param string $name
+	 * @param int $entityId
+	 * @return string
+	 * @throws TableException
+	 */
+	public function getComponentHtml(string $name, int $entityId)
+	{
+		$component = $this->getControl()->getComponent($name . '_' . $entityId, FALSE);
+		if ($component && method_exists($component, 'render')) {
+			ob_start();
+			$component->render();
+			$output = ob_get_contents();
+			ob_end_clean();
+			return $output;
+		}
+
+		return '';
 	}
 
 }
