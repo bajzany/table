@@ -196,7 +196,7 @@ EntityTable is used for work with entity.
 		- setFooterItemCallable(function(Item){})
 			- This footer function get you in anonymous function Item. You can edit it. Its nette Html object 
 		
-For rendering table use .latte
+#### For rendering table use .latte
 
 	<div class="box-body">
 		{control tableEntity}
@@ -206,3 +206,42 @@ For rendering table use .latte
 	<div class="box-footer clearfix">
 		{control tableEntity:paginator}
 	</div>
+
+#### For register subscriber on table events
+
+	<?php
+
+    
+    namespace Bundles\User\Model;
+    
+    use Bajzany\Table\EntityTable;
+    use Bajzany\Table\Events\ITableSubscriber;
+    use Bundles\User\Entity\User;
+    use Chomenko\AutoInstall\AutoInstall;
+    use Chomenko\AutoInstall\Config\Tag;
+    use Bajzany\Table\DI\TableExtensions;
+    
+    /**
+     * @Tag({TableExtensions::TAG_EVENT=User::class})
+     */
+    class UserTableSubscriber implements ITableSubscriber, AutoInstall
+    {
+    
+    	/**
+    	 * @return array
+    	 */
+    	public function getSubscribedEvents(): array
+    	{
+    		if (php_sapi_name() == "cli") {
+    			return [];
+    		}
+    		return [
+    			EntityTable::EVENT_ON_BUILD_QUERY => "onBuildQuery",
+    		];
+    	}
+    
+    	public function onBuildQuery(EntityTable $entityTable)
+    	{
+    	}
+    
+    }

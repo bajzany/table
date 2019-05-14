@@ -11,6 +11,8 @@ use Bajzany\Paginator\QueryPaginator;
 use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\EntityTable\ISearchColumn;
+use Bajzany\Table\Events\Listener;
+use Bajzany\Table\Events\TableEvents;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
@@ -24,6 +26,7 @@ class EntityTable extends Table
 {
 
 	const PATTERN_REGEX = "~{{\s([a-zA-Z_0-9]+)\s}}~";
+	const EVENT_ON_BUILD_QUERY = 'EVENT_ON_BUILD_QUERY';
 
 	/**
 	 * @var string
@@ -61,10 +64,19 @@ class EntityTable extends Table
 	private $queryBuilder;
 
 	/**
+	 * @var TableEvents
+	 */
+	private $tableEvents;
+
+	/** @var Listener  */
+	private $tableListener;
+
+	/**
 	 * @param string $entityClass
 	 * @param EntityManager $entityManager
+	 * @param TableEvents $tableEvents
 	 */
-	public function __construct(string $entityClass, EntityManager $entityManager)
+	public function __construct(string $entityClass, EntityManager $entityManager, TableEvents $tableEvents)
 	{
 		parent::__construct();
 		$this->entityClass = $entityClass;
@@ -73,6 +85,18 @@ class EntityTable extends Table
 		$this->queryBuilder = $this->entityRepository->createQueryBuilder('e');
 
 		$this->paginator = new QueryPaginator();
+
+		/** TABLE SUBSCRIBER REGISTRATION EVENTS */
+		$this->tableEvents = $tableEvents;
+		$this->tableListener = new Listener();
+		$group = $this->tableEvents->getEntityGroup($this->entityClass);
+		if (!empty($group)) {
+			foreach ($group->getEvents() as $event) {
+				foreach ($event->getSubscribedEvents() as $eventType => $subscribedEvent) {
+					$this->tableListener->create($eventType, [$event, $subscribedEvent]);
+				}
+			}
+		}
 	}
 
 	/**
@@ -132,6 +156,8 @@ class EntityTable extends Table
 			$this->queryBuilder->addOrderBy($by, $sort);
 		}
 
+		$this->tableListener->emit(self::EVENT_ON_BUILD_QUERY, $this);
+
 		$query = $this->queryBuilder->getQuery();
 		$paginator = $this->getPaginator();
 
@@ -160,8 +186,8 @@ class EntityTable extends Table
 				$item->setHtml($column->getLabel());
 			}
 
-			$listiner = $column->getListener();
-			$listiner->emit(Column::ON_HEADER_CREATE, $item, $column);
+			$listener = $column->getListener();
+			$listener->emit(Column::ON_HEADER_CREATE, $item, $column);
 		}
 	}
 
@@ -183,8 +209,8 @@ class EntityTable extends Table
 				}
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
-				$listiner = $column->getListener();
-				$listiner->emit(Column::ON_BODY_CREATE, $item, $entity);
+				$listener = $column->getListener();
+				$listener->emit(Column::ON_BODY_CREATE, $item, $entity);
 			}
 		}
 	}
@@ -199,8 +225,8 @@ class EntityTable extends Table
 			$item = $footer->createItem();
 			$item->setHtml($column->getFooter());
 
-			$listiner = $column->getListener();
-			$listiner->emit(Column::ON_FOOTER_CREATE,$item);
+			$listener = $column->getListener();
+			$listener->emit(Column::ON_FOOTER_CREATE, $item);
 		}
 	}
 
