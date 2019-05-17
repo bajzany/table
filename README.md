@@ -272,3 +272,9 @@ EntityTable is used for work with entity.
 			$html = $table->getComponentHtml('form', $entity->getId());
 			$item->addHtml($html);
 		});
+
+#### For create link with persistent parameters into paginator and searchColumns please use function createLink in tableObject:
+
+	->onBodyCreate(function (Item $item) {
+		$url = $item->getTable()->createLink(':Admin:Dashboard:default', ['id' => 5]);
+	});
