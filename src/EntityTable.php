@@ -432,26 +432,6 @@ class EntityTable extends Table
 	}
 
 	/**
-	 * @param IContainer $control
-	 * @param string $name
-	 * @return string
-	 */
-	public function getComponentName(IContainer $control, string $name = '')
-	{
-		if ($control instanceof Presenter) {
-			return $name;
-		}
-
-		if (empty($name)) {
-			$controlName = $control->getName();
-		} else {
-			$controlName = $control->getName() . '-' . $name;
-		}
-
-		return $this->getComponentName($control->getParent(), $controlName);
-	}
-
-	/**
 	 * @param string $name
 	 * @param string $className
 	 */

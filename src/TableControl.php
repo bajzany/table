@@ -8,6 +8,7 @@
 namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginationControl;
+use Bajzany\Paginator\PaginationControl;
 use Bajzany\Table\ColumnDriver\ColumnDriverControl;
 use Bajzany\Table\ColumnDriver\IColumnDriverControl;
 use Bajzany\Table\Exceptions\TableException;
@@ -63,6 +64,25 @@ class TableControl extends Control
 	public function renderPaginator()
 	{
 		$paginatorComponent = $this->getComponent(self::PAGINATOR_NAME);
+
+		if ($paginatorComponent instanceof PaginationControl) {
+			$paginatorComponent->getListener()->create(PaginationControl::ON_LINK_CREATE, function (PaginationControl $control, $currentPage, &$link) {
+
+				$searchColumns = $this->getTable()->getSearchColumns();
+				$params = [];
+				foreach ($searchColumns as $searchColumn) {
+					$params[$searchColumn->getInputName()] = $searchColumn->getSelectedValue();
+				}
+
+				$buildSearchParams = $this->getTable()->getComponentParameters($params, $this);
+				$buildPaginatorParams = $this->getTable()->getComponentParameters(['currentPage' => $currentPage], $control);
+
+				$params = array_merge($buildSearchParams, $buildPaginatorParams);
+
+				$link = $this->getPresenter()->link('this', $params);
+			});
+		}
+
 		$paginatorComponent->render();
 	}
 

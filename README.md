@@ -245,3 +245,30 @@ EntityTable is used for work with entity.
     	}
     
     }
+
+
+#### For register and call component into table please use this:
+
+- In function create call addRegisterComponent function
+
+		/**
+    	 * @return EntityTable
+    	 * @throws \Bajzany\Table\Exceptions\TableException
+    	 */
+    	public function create(): EntityTable
+    	{
+    		$table = $this->tableFactory->createEntityTable(EntityName::class);
+    
+    		$table->addRegisterComponent('form', InterfaceComponent::class);
+    		
+    		
+- onBodyCreate function use $table->getComponentHtml('form', $entity->getId()):
+	
+		->onBodyCreate(function (Item $item, StockItem $entity){
+			$table = $item->getTable();
+			if (!$table instanceof EntityTable) {
+				return;
+			}
+			$html = $table->getComponentHtml('form', $entity->getId());
+			$item->addHtml($html);
+		});

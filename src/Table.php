@@ -12,10 +12,13 @@ use Bajzany\Paginator\Paginator;
 use Bajzany\Table\ColumnDriver\ColumnDriver;
 use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
+use Bajzany\Table\EntityTable\ISearchColumn;
+use Bajzany\Table\EntityTable\SearchColumn;
 use Bajzany\Table\EntityTable\SearchSelectColumn;
 use Bajzany\Table\EntityTable\SearchTextColumn;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\TableWrapped;
+use Nette\Application\UI\Presenter;
 use Nette\ComponentModel\IContainer;
 
 class Table implements ITable
@@ -275,6 +278,21 @@ class Table implements ITable
 	}
 
 	/**
+	 * @return SearchColumn[]
+	 */
+	public function getSearchColumns()
+	{
+		$searchColumns = [];
+		foreach ($this->columns as $column) {
+			if ($column instanceof SearchColumn) {
+				$searchColumns[] = $column;
+			}
+		}
+
+		return $searchColumns;
+	}
+
+	/**
 	 * @param IColumn $column
 	 * @return $this
 	 * @throws TableException
@@ -299,6 +317,73 @@ class Table implements ITable
 			return TRUE;
 		}
 		return FALSE;
+	}
+
+	/**
+	 * @param string $destination
+	 * @param array $parameters
+	 * @return string
+	 * @throws TableException
+	 * @throws \Nette\Application\UI\InvalidLinkException
+	 */
+	public function createLink(string $destination, array $parameters = [])
+	{
+		/** BUILD PAGINATOR PARAMS */
+		$paginatorControl = $this->getControl()->getComponent(TableControl::PAGINATOR_NAME);
+		$paginatorParameters = $this->getComponentParameters($paginatorControl->getParameters(), $paginatorControl);
+
+		/** BUILD SEARCH PARAMS */
+		$searchColumns = $this->getSearchColumns();
+		$params = [];
+		foreach ($searchColumns as $searchColumn) {
+			$params[$searchColumn->getInputName()] = $searchColumn->getSelectedValue();
+		}
+
+		$buildSearchParams = $this->getComponentParameters($params, $this->getControl());
+
+		$parameters = array_merge($parameters, $paginatorParameters);
+		$parameters = array_merge($parameters, $buildSearchParams);
+
+		return $this->getPresenter()->link($destination, $parameters);
+	}
+
+	/**
+	 * @param array $parameters
+	 * @param IContainer $container
+	 * @return array
+	 */
+	public function getComponentParameters(array $parameters, IContainer $container)
+	{
+		$name = $this->getComponentName($container);
+		$params = [];
+		foreach ($parameters as $parameter => $value) {
+			if (!$value) {
+				continue;
+			}
+			$params[$name . '-' . $parameter] = $value;
+		}
+
+		return $params;
+	}
+
+	/**
+	 * @param IContainer $control
+	 * @param string $name
+	 * @return string
+	 */
+	public function getComponentName(IContainer $control, string $name = '')
+	{
+		if ($control instanceof Presenter) {
+			return $name;
+		}
+
+		if (empty($name)) {
+			$controlName = $control->getName();
+		} else {
+			$controlName = $control->getName() . '-' . $name;
+		}
+
+		return $this->getComponentName($control->getParent(), $controlName);
 	}
 
 
