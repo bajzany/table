@@ -209,6 +209,11 @@ EntityTable is used for work with entity.
 
 #### For register subscriber on table events
 
+- Use @Tag annotation for register new listener on Table {TableExtensions::TAG_EVENT=User::class} - User::class is entity which you can listening
+- List of events you can implement into function getSubscribedEvents
+- EntityTable::EVENT_ON_BUILD_QUERY - this is event when will be call before render table, just change queryBuilder query for specific select entities
+
+
 	<?php
 
     
