@@ -214,6 +214,7 @@ EntityTable is used for work with entity.
 - EntityTable::EVENT_ON_BUILD_QUERY - this is event when will be call before render table, just change queryBuilder query for specific select entities
 
 
+
 	<?php
 
     
