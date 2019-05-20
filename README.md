@@ -274,7 +274,39 @@ EntityTable is used for work with entity.
 			$html = $table->getComponentHtml('form', $entity->getId());
 			$item->addHtml($html);
 		});
-
+		
+		
+#### Table have search function on columns 
+-  Classic search with base event (Search functionality by LIKE key "toEmails" in this entity)
+````php
+$table->createSearchTextColumn("toEmails")
+	->setLabel("To Emails")
+	->onBodyCreate(function (Item $item, Email $entity) {
+		foreach ($entity->getToEmails() as $email) {
+			$emailText = Html::el("span", [
+				"class" => "label label-success",
+			])->setText($email);
+			$item->addHtml($emailText)->addHtml("<br>");
+		}
+	});
+````
+- Or you can write own event on searchAction
+````php
+$table->createSearchTextColumn("sender")
+	->setLabel("Sender")
+	->onSearchAction(function (EntityTable\SearchTextColumn $column) use ($qb){
+		$qb
+			->leftJoin('e.sender', 'user')
+			->andWhere('user.email LIKE :email')
+			->setParameter('email', '%'.$column->getSelectedValue().'%');
+	})
+	->onBodyCreate(function (Item $item, Email $entity) {
+		$sender = Html::el("span", [
+			"class" => "label label-success",
+		])->setText($entity->getSender()->getEmail());
+		$item->addHtml($sender)->addHtml("<br>");
+	});
+````
 #### For create link with persistent parameters into paginator and searchColumns please use function createLink in tableObject:
 
 	->onBodyCreate(function (Item $item) {
