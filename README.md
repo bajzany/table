@@ -253,6 +253,8 @@ EntityTable is used for work with entity.
 
 - In function create call addRegisterComponent function
 
+		use Bajzany\Table\TableComponent;
+
 		/**
     	 * @return EntityTable
     	 * @throws \Bajzany\Table\Exceptions\TableException
@@ -260,18 +262,19 @@ EntityTable is used for work with entity.
     	public function create(): EntityTable
     	{
     		$table = $this->tableFactory->createEntityTable(EntityName::class);
-    
-    		$table->addRegisterComponent('form', InterfaceComponent::class);
+    		$tableComponent = new TableComponent(IActionsControl::class);
+    		$table->addRegisterComponent('form', $tableComponent);
     		
     		
-- onBodyCreate function use $table->getComponentHtml('form', $entity->getId()):
+- onBodyCreate function use $table->getComponentHtml('form', $entity->getId(), [...args]):
 	
 		->onBodyCreate(function (Item $item, StockItem $entity){
 			$table = $item->getTable();
 			if (!$table instanceof EntityTable) {
 				return;
 			}
-			$html = $table->getComponentHtml('form', $entity->getId());
+			
+			$html = $table->getComponentHtml('form', $entity->getId(), [...args]);	
 			$item->addHtml($html);
 		});
 		
