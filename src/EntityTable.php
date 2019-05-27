@@ -433,15 +433,15 @@ class EntityTable extends Table
 
 	/**
 	 * @param string $name
-	 * @param string $className
+	 * @param TableComponent $tableComponent
 	 */
-	public function addRegisterComponent(string $name, string $className)
+	public function addRegisterComponent(string $name, TableComponent $tableComponent)
 	{
-		$this->registerComponents[$name] = $className;
+		$this->registerComponents[$name] = $tableComponent;
 	}
 
 	/**
-	 * @return array
+	 * @return TableComponent[]
 	 */
 	public function getRegisterComponents(): array
 	{
@@ -450,9 +450,9 @@ class EntityTable extends Table
 
 	/**
 	 * @param string $name
-	 * @return string
+	 * @return TableComponent|null
 	 */
-	public function getRegisterComponentByName(string $name): ?string
+	public function getRegisterComponentByName(string $name): ?TableComponent
 	{
 		if (array_key_exists($name, $this->registerComponents)) {
 			return $this->registerComponents[$name];
@@ -462,13 +462,14 @@ class EntityTable extends Table
 
 	/**
 	 * @param string $name
-	 * @param int $entityId
+	 * @param int $identification
+	 * @param array $args
 	 * @return string
 	 * @throws TableException
 	 */
-	public function getComponentHtml(string $name, int $entityId)
+	public function getComponentHtml(string $name, int $identification, ...$args)
 	{
-		$component = $this->getControl()->getComponent($name . '_' . $entityId, FALSE);
+		$component = $this->getControl()->getComponent($name . '_' . $identification, FALSE, ...$args);
 		if ($component && method_exists($component, 'render')) {
 			ob_start();
 			$component->render();

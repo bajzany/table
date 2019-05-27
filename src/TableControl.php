@@ -54,7 +54,7 @@ class TableControl extends Control
 	{
 		$this->table->execute($this);
 	}
-	
+
 	public function attached($presenter)
 	{
 		parent::attached($presenter);
@@ -92,7 +92,7 @@ class TableControl extends Control
 		$columnDriverComponent->render();
 	}
 
-	public function getComponent($name, $throw = TRUE)
+	public function getComponent($name, $throw = TRUE, $args = [])
 	{
 		$component = parent::getComponent($name, $throw);
 		// FOR COMPONENT INTO TABLE RENDER
@@ -108,13 +108,9 @@ class TableControl extends Control
 				return NULL;
 			}
 
-			$interfaceClassName = $table->getRegisterComponentByName($prefix);
-			$service = $this->container->getByType($interfaceClassName);
-			$entity = $table->getEntityManager()
-				->getRepository($table->getEntityClass())
-				->find($entityId);
-			/** @var Control $component */
-			$component = $service->create($entity);
+			$component = $table->getRegisterComponentByName($prefix);
+			$service = $this->container->getByType($component->getComponentInterface());
+			$component = $service->create(...$args);
 			$this->addComponent($component, $componentName);
 			$component = parent::getComponent($name, $throw);
 		}
