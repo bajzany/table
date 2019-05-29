@@ -73,6 +73,37 @@ It's very simple Html table object. For creating this component use:
 
 		return $this->tableFactory->createComponentTable($table);
 	}
+
+or use your row collection
+
+	public function createComponentTable()
+	{
+		$rowsCollection = new RowsCollection();
+		$rowsCollection->add([
+			"name" => "Jan",
+			"surname" => "Novák",
+		]);
+		$rowsCollection->add([
+			"name" => "František",
+			"surname" => "Palacký",
+		]);
+		$rowsCollection->add([
+			"name" => "Antonín",
+			"surname" => "Dvořák",
+		]);
+	
+		$table = $this->tableFactory->createTable($rowsCollection);
+		$column = $table->createColumn("name");
+		$column->setPattern("{{ name }}");
+		$column->setLabel("Name");
+
+		$column = $table->createColumn("surname");
+		$column->setPattern("{{ surname }}");
+		$column->setLabel("Surname");
+
+		return $this->tableFactory->createComponentTable($table);
+	}
+	
 	
 TableWrapped have header, body and footer. Each of this section have children as html item
 

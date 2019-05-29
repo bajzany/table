@@ -57,11 +57,12 @@ class TableFactory
 	}
 
 	/**
+	 * @param RowsCollection|null $collection
 	 * @return Table
 	 */
-	public function createTable()
+	public function createTable(?RowsCollection $collection = NULL)
 	{
-		return new Table();
+		return new Table($collection);
 	}
 
 	/**

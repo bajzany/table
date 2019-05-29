@@ -26,7 +26,6 @@ use Nette\Utils\Html;
 class EntityTable extends Table
 {
 
-	const PATTERN_REGEX = "~{{\s([a-zA-Z_0-9]+)\s}}~";
 	const EVENT_ON_BUILD_QUERY = 'EVENT_ON_BUILD_QUERY';
 
 	/**
@@ -106,6 +105,7 @@ class EntityTable extends Table
 	}
 
 	/**
+	 * @param TableControl $control
 	 * @throws TableException
 	 */
 	public function execute(TableControl $control)
@@ -137,7 +137,6 @@ class EntityTable extends Table
 		}
 
 		$this->getTableWrapped()->render();
-
 		$this->emitPostRender();
 	}
 
@@ -154,7 +153,10 @@ class EntityTable extends Table
 		$this->control = $container;
 
 		$this->buildQuery($container);
-		return parent::build($container);
+
+		$container->getComponent(TableControl::COLUMN_DRIVER_NAME);
+		$this->build = TRUE;
+		return $this;
 	}
 
 	/**
@@ -193,7 +195,7 @@ class EntityTable extends Table
 		$this->entities = $query->getResult();
 	}
 
-	private function createHeader()
+	protected function createHeader()
 	{
 		$header = $this->getTableWrapped()->getHeader();
 
@@ -213,7 +215,10 @@ class EntityTable extends Table
 		}
 	}
 
-	private function createBody()
+	/**
+	 * @throws TableException
+	 */
+	protected function createBody()
 	{
 		$body = $this->getTableWrapped()->getBody();
 		foreach ($this->entities as $entity) {
@@ -235,73 +240,6 @@ class EntityTable extends Table
 				$listener->emit(Column::ON_BODY_CREATE, $item, $entity);
 			}
 		}
-	}
-
-	private function createFooter()
-	{
-		$footer = $this->getTableWrapped()->getFooter();
-		foreach ($this->getColumns() as $column) {
-			if (!$column->getFooter()) {
-				continue;
-			}
-
-			if (!$column->isAllowRender()) {
-				continue;
-			}
-			$item = $footer->createItem();
-			$item->setHtml($column->getFooter());
-
-			$listener = $column->getListener();
-			$listener->emit(Column::ON_FOOTER_CREATE, $item);
-		}
-	}
-
-	/**
-	 * @param IColumn $column
-	 * @param array $origin
-	 * @param Item $item
-	 * @throws TableException
-	 */
-	private function usePattern(IColumn $column, array $origin, Item $item)
-	{
-		if (!empty($column->getPattern())) {
-			$labelItem = $column->getPattern();
-			$templateKeys = $this->getPatternsKeys($column->getPattern());
-			foreach ($templateKeys as $i => $key) {
-				if (!array_key_exists($key["name"], $origin)) {
-					throw TableException::doesNotExistField($key["name"], $this->getEntityClass());
-				}
-
-				$value = $origin[$key["name"]];
-				$value = $this->applyFilters($column, $value);
-
-				$templateKeys[$i]["translate"] = $value;
-			}
-
-			foreach ($templateKeys as $key) {
-				$translate = $key['translate'];
-				if (!$translate instanceof Html) {
-					$translate = htmlspecialchars($translate);
-				}
-
-				$labelItem = str_replace($key["search"], $translate, $labelItem);
-			}
-
-			$item->setHtml($labelItem);
-		}
-	}
-
-	/**
-	 * @param IColumn $column
-	 * @param mixed $value
-	 * @return mixed
-	 */
-	private function applyFilters(IColumn $column, $value)
-	{
-		foreach ($column->getFilters() as $filter) {
-			$value = call_user_func_array($filter["callable"], array_merge([$value, $column], $filter["config"]));
-		}
-		return $value;
 	}
 
 	/**
@@ -337,8 +275,6 @@ class EntityTable extends Table
 	{
 		return $this->entities;
 	}
-
-
 
 	/**
 	 * @return ObjectRepository
@@ -394,25 +330,6 @@ class EntityTable extends Table
 	{
 		$this->sort[$key] = $value;
 		return $this;
-	}
-
-	/**
-	 * @param string $template
-	 * @return array
-	 */
-	protected function getPatternsKeys(string $template): array
-	{
-		$keys = [];
-		preg_match_all(self::PATTERN_REGEX, $template, $matches);
-		foreach ($matches[0] as $index => $value) {
-			$name = $matches[1][$index];
-			$keys[$name] = [
-				"search" => $value,
-				"name" => $name,
-				"translate" => "",
-			];
-		}
-		return $keys;
 	}
 
 	/**
@@ -477,7 +394,6 @@ class EntityTable extends Table
 			ob_end_clean();
 			return $output;
 		}
-
 		return '';
 	}
 
