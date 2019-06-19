@@ -9,19 +9,17 @@ namespace Bajzany\Table;
 
 use Bajzany\Paginator\QueryPaginator;
 use Bajzany\Table\EntityTable\Column;
-use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\EntityTable\ISearchColumn;
 use Bajzany\Table\Events\Listener;
 use Bajzany\Table\Events\TableEvents;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\Footer;
-use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
 use Kdyby\Doctrine\QueryBuilder;
-use Nette\Application\UI\Presenter;
 use Nette\ComponentModel\IContainer;
-use Nette\Utils\Html;
+use Nette\Http\Session;
+use Nette\Http\SessionSection;
 
 class EntityTable extends Table
 {
@@ -68,7 +66,7 @@ class EntityTable extends Table
 	 */
 	private $tableEvents;
 
-	/** @var Listener  */
+	/** @var Listener */
 	private $tableListener;
 
 	/**
@@ -77,11 +75,17 @@ class EntityTable extends Table
 	protected $registerComponents = [];
 
 	/**
+	 * @var Session
+	 */
+	private $tableSection;
+
+	/**
 	 * @param string $entityClass
 	 * @param EntityManager $entityManager
 	 * @param TableEvents $tableEvents
+	 * @param SessionSection $tableSection
 	 */
-	public function __construct(string $entityClass, EntityManager $entityManager, TableEvents $tableEvents)
+	public function __construct(string $entityClass, EntityManager $entityManager, TableEvents $tableEvents, Session $session)
 	{
 		parent::__construct();
 		$this->entityClass = $entityClass;
@@ -102,6 +106,8 @@ class EntityTable extends Table
 				}
 			}
 		}
+		$tableSection = $session->getSection('table-' . $this->entityClass);
+		$this->tableSection = $tableSection;
 	}
 
 	/**
@@ -354,7 +360,11 @@ class EntityTable extends Table
 	 */
 	public function addRegisterComponent(string $name, TableComponent $tableComponent)
 	{
-		$this->registerComponents[$name] = $tableComponent;
+		$component = $this->getRegisterComponentByName($name);
+		if ($component) {
+			return;
+		}
+		$this->tableSection->registerComponents[$name] = $tableComponent;
 	}
 
 	/**
@@ -362,7 +372,7 @@ class EntityTable extends Table
 	 */
 	public function getRegisterComponents(): array
 	{
-		return $this->registerComponents;
+		return  !$this->tableSection || empty($this->tableSection->registerComponents) ? $this->tableSection->registerComponents : [];
 	}
 
 	/**
@@ -371,8 +381,12 @@ class EntityTable extends Table
 	 */
 	public function getRegisterComponentByName(string $name): ?TableComponent
 	{
-		if (array_key_exists($name, $this->registerComponents)) {
-			return $this->registerComponents[$name];
+		if (!$this->tableSection || !$this->tableSection->registerComponents) {
+			return NULL;
+		}
+
+		if (array_key_exists($name, $this->tableSection->registerComponents)) {
+			return $this->tableSection->registerComponents[$name];
 		}
 		return NULL;
 	}
@@ -386,7 +400,10 @@ class EntityTable extends Table
 	 */
 	public function getComponentHtml(string $name, int $identification, ...$args)
 	{
-		$component = $this->getControl()->getComponent($name . '_' . $identification, FALSE, ...$args);
+		$registerComponent = $this->getRegisterComponentByName($name);
+		$registerComponent->addComponentProperties($identification, ...$args);
+
+		$component = $this->getControl()->getComponent($name . '_' . $identification, FALSE);
 		if ($component && method_exists($component, 'render')) {
 			ob_start();
 			$component->render();

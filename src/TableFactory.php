@@ -10,6 +10,7 @@ namespace Bajzany\Table;
 use Bajzany\Table\Events\TableEvents;
 use Chomenko\AppWebLoader\AppWebLoader;
 use Kdyby\Doctrine\EntityManager;
+use Nette\Http\Session;
 
 class TableFactory
 {
@@ -30,14 +31,20 @@ class TableFactory
 	private $tableEvents;
 
 	/**
+	 * @var Session
+	 */
+	private $session;
+
+	/**
 	 * @param AppWebLoader $appWebLoader
 	 * @param ITableControl $tableControl
 	 * @param EntityManager $entityManager
 	 * @param TableEvents $tableEvents
+	 * @param Session $session
 	 * @throws \Chomenko\AppWebLoader\Exceptions\AppWebLoaderException
 	 * @throws \ReflectionException
 	 */
-	public function __construct(AppWebLoader $appWebLoader, ITableControl $tableControl, EntityManager $entityManager, TableEvents $tableEvents)
+	public function __construct(AppWebLoader $appWebLoader, ITableControl $tableControl, EntityManager $entityManager, TableEvents $tableEvents, Session $session)
 	{
 		$this->tableControl = $tableControl;
 		$this->entityManager = $entityManager;
@@ -45,6 +52,7 @@ class TableFactory
 		$collection->addScript(__DIR__ . "/template/table.js");
 		$collection->addStyles(__DIR__ . "/template/table.less");
 		$this->tableEvents = $tableEvents;
+		$this->session = $session;
 	}
 
 	/**
@@ -71,7 +79,7 @@ class TableFactory
 	 */
 	public function createEntityTable(string $className)
 	{
-		return new EntityTable($className, $this->entityManager, $this->tableEvents);
+		return new EntityTable($className, $this->entityManager, $this->tableEvents, $this->session);
 	}
 
 }

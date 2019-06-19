@@ -12,6 +12,8 @@ use Bajzany\Paginator\PaginationControl;
 use Bajzany\Table\ColumnDriver\ColumnDriverControl;
 use Bajzany\Table\ColumnDriver\IColumnDriverControl;
 use Bajzany\Table\Exceptions\TableException;
+use Doctrine\Common\Persistence\Proxy;
+use Kdyby\Doctrine\EntityManager;
 use Nette\Application\UI\Control;
 use Nette\DI\Container;
 
@@ -92,9 +94,21 @@ class TableControl extends Control
 		$columnDriverComponent->render();
 	}
 
-	public function getComponent($name, $throw = TRUE, $args = [])
+	private function isEntity(EntityManager $em, $class)
+	{
+		if (is_object($class)) {
+			$class = ($class instanceof Proxy)
+				? get_parent_class($class)
+				: get_class($class);
+		}
+
+		return ! $em->getMetadataFactory()->isTransient($class);
+	}
+
+	public function getComponent($name, $throw = TRUE)
 	{
 		$component = parent::getComponent($name, $throw);
+
 		// FOR COMPONENT INTO TABLE RENDER
 		$table = $this->table;
 		if (!$component && $table instanceof EntityTable) {
@@ -103,12 +117,24 @@ class TableControl extends Control
 			$exp = explode("_", $componentName);
 			$prefix = $exp[0];
 			$entityId = isset($exp[1]) ? $exp[1] : NULL;
-
 			if (!$entityId) {
 				return NULL;
 			}
 
 			$component = $table->getRegisterComponentByName($prefix);
+			$properties = $component->getComponentPropertiesByIdentification($entityId);
+			foreach ($properties as $properity) {
+				if ($this->isEntity($table->getEntityManager(), $properity)) {
+					$meta = $table->getEntityManager()->getClassMetadata(get_class($properity));
+					$identifierValues = $meta->getIdentifierValues($properity);
+					$identifier = $meta->getSingleIdentifierFieldName();
+					$entity = $table->getEntityManager()->getRepository(get_class($properity))->find($identifierValues[$identifier]);
+					$args[] = $entity;
+				} else {
+					$args[] = $properity;
+				}
+			}
+
 			$service = $this->container->getByType($component->getComponentInterface());
 			$component = $service->create(...$args);
 			$this->addComponent($component, $componentName);
