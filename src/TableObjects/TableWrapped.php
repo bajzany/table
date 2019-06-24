@@ -7,7 +7,6 @@
 
 namespace Bajzany\Table\TableObjects;
 
-use Bajzany\Table\ITable;
 use Bajzany\Table\Table;
 use Bajzany\Table\TableHtml;
 
@@ -39,7 +38,7 @@ class TableWrapped extends TableHtml
 	 */
 	private $caption;
 
-	public function __construct(ITable $table)
+	public function __construct(Table $table)
 	{
 		$this->table = $table;
 		$this->header = new Header();
@@ -60,8 +59,10 @@ class TableWrapped extends TableHtml
 	private function createTable(): TableHtml
 	{
 		$this->setName('table');
-		$this->setAttribute('class','table');
-		$this->addHtml($this->getCaption());
+		$this->setAttribute('class', 'table table-hover table-condensed');
+		if (!empty($this->getCaption()->getText())) {
+			$this->addHtml($this->getCaption());
+		}
 		$this->addHtml($this->getHeader());
 		$this->addHtml($this->getBody());
 		$this->addHtml($this->getFooter());

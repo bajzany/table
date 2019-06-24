@@ -10,6 +10,8 @@ namespace Bajzany\Table;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\HtmlElements\HtmlElements;
 use Bajzany\Table\TableObjects\TableWrapped;
+use Nette\Application\UI\Control;
+use Nette\ComponentModel\IComponent;
 use Nette\Utils\Html;
 
 class TableHtml extends Html
@@ -29,8 +31,55 @@ class TableHtml extends Html
 		 unset($this->children[$key]);
 	}
 
+	/**
+	 * @param null $indent
+	 * @return string
+	 */
+	public function render($indent = NULL)
+	{
+		$s = $this->startTag();
+
+		if (!$this->isEmpty()) {
+			// add content
+			if ($indent !== NULL) {
+				$indent++;
+			}
+			foreach ($this->getChildren() as $child) {
+				if ($child instanceof self || $child instanceof Control) {
+					ob_start();
+					$content = $child->render($indent);
+					$output = ob_get_contents();
+					if (empty($content) && !empty($output)) {
+						$content = $output;
+					}
+					ob_end_clean();
+					$s .= $content;
+				} else {
+					$s .= $child;
+				}
+			}
+
+			// add end tag
+			$s .= $this->endTag();
+		}
+
+		if ($indent !== NULL) {
+			return "\n" . str_repeat("\t", $indent - 1) . $s . "\n" . str_repeat("\t", max(0, $indent - 2));
+		}
+		return $s;
+	}
+
+	/**
+	 * @param string|Html $child
+	 * @return $this|Html|void
+	 */
 	public function addHtml($child)
 	{
+		if ($child instanceof IComponent) {
+			$this->children[$child->getName()] = $child;
+			return;
+		}
+
 		if ($child instanceof HtmlElements) {
 			$child->build();
 		}
@@ -42,7 +91,6 @@ class TableHtml extends Html
 		}
 
 		return $this;
-
 	}
 
 	public function setHtml($html)

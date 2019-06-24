@@ -13,6 +13,7 @@ use Bajzany\Table\Exceptions\TableException;
 
 class ColumnDriver
 {
+
 	/**
 	 * @var IColumn[]
 	 */

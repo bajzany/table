@@ -15,16 +15,6 @@ use Nette\ComponentModel\IContainer;
 
 interface ITable
 {
-	/**
-	 * @param IContainer $container
-	 * @return ITable
-	 */
-	public function build(IContainer $container): ITable;
-
-	/**
-	 * @param TableControl $control
-	 */
-	public function execute(TableControl $control);
 
 	/**
 	 * @return bool

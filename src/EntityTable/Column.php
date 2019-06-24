@@ -7,24 +7,41 @@
 
 namespace Bajzany\Table\EntityTable;
 
-use Bajzany\Table\Events\Listener;
-use Nette\Application\UI\Control;
+use Nette\SmartObject;
 
+/**
+ * @method onBodyCreate()
+ * @method onHeaderCreate()
+ * @method onFooterCreate()
+ */
 class Column implements IColumn
 {
+
+	use SmartObject;
+
 	const ON_HEADER_CREATE = "onHeaderCreate";
 	const ON_BODY_CREATE = "onBodyCreate";
 	const ON_FOOTER_CREATE = "onFooterCreate";
 
 	/**
+	 * @var callable[]
+	 */
+	public $onBodyCreate = [];
+
+	/**
+	 * @var callable[]
+	 */
+	public $onHeaderCreate = [];
+
+	/**
+	 * @var callable[]
+	 */
+	public $onFooterCreate = [];
+
+	/**
 	 * @var string
 	 */
 	private $key;
-
-	/**
-	 * @var Listener
-	 */
-	private $listener;
 
 	/**
 	 * @var string
@@ -42,7 +59,7 @@ class Column implements IColumn
 	private $pattern;
 
 	/**
-	 * @var Control[]
+	 * @var array
 	 */
 	private $components = [];
 
@@ -62,7 +79,6 @@ class Column implements IColumn
 	public function __construct(string $key)
 	{
 		$this->key = $key;
-		$this->listener = new Listener();
 	}
 
 	/**
@@ -71,44 +87,6 @@ class Column implements IColumn
 	public function getKey(): string
 	{
 		return $this->key;
-	}
-
-	/**
-	 * @return Listener
-	 */
-	public function getListener(): Listener
-	{
-		return $this->listener;
-	}
-
-	/**
-	 * @param callable $callable
-	 * @return $this
-	 */
-	public function onHeaderCreate(callable $callable)
-	{
-		$this->listener->create(self::ON_HEADER_CREATE, $callable);
-		return $this;
-	}
-
-	/**
-	 * @param callable $callable
-	 * @return $this
-	 */
-	public function onBodyCreate(callable $callable)
-	{
-		$this->listener->create(self::ON_BODY_CREATE, $callable);
-		return $this;
-	}
-
-	/**
-	 * @param callable $callable
-	 * @return $this
-	 */
-	public function onFooterCreate(callable $callable)
-	{
-		$this->listener->create(self::ON_FOOTER_CREATE, $callable);
-		return $this;
 	}
 
 	/**
@@ -188,19 +166,21 @@ class Column implements IColumn
 	}
 
 	/**
-	 * @return Control[]
+	 * @return array
 	 */
-	public function getComponents(): array
+	public function getUsedComponents(): array
 	{
 		return $this->components;
 	}
 
 	/**
-	 * @param Control $control
+	 * @param string $name
+	 * @return $this
 	 */
-	public function addComponent(Control $control)
+	public function useComponent(string $name)
 	{
-		$this->components[] = $control;
+		$this->components[] = $name;
+		return $this;
 	}
 
 	/**

@@ -7,41 +7,50 @@
 
 namespace Bajzany\Table;
 
+use Bajzany\Paginator\IPaginationControl;
 use Bajzany\Paginator\IPaginator;
 use Bajzany\Paginator\Paginator;
 use Bajzany\Table\ColumnDriver\ColumnDriver;
 use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
-use Bajzany\Table\EntityTable\ISearchColumn;
-use Bajzany\Table\EntityTable\SearchColumn;
-use Bajzany\Table\EntityTable\SearchSelectColumn;
-use Bajzany\Table\EntityTable\SearchTextColumn;
 use Bajzany\Table\Exceptions\TableException;
 use Bajzany\Table\TableObjects\Item;
 use Bajzany\Table\TableObjects\TableWrapped;
-use Nette\Application\UI\Presenter;
-use Nette\ComponentModel\IContainer;
+use Nette\Application\UI\Control;
+use Nette\Localization\ITranslator;
 use Nette\Utils\Html;
 
-class Table implements ITable
+/**
+ * @method onBuild(Table $table)
+ * @method onPreRender(Table $table)
+ * @method onPostRender(Table $table)
+ */
+abstract class Table extends Control
 {
 
 	const PATTERN_REGEX = "~{{\s([a-zA-Z_0-9]+)\s}}~";
 
+	use TableUtils;
+
 	/**
 	 * @var TableWrapped
 	 */
-	private $tableWrapped;
+	protected $tableWrapped;
 
 	/**
 	 * @var callable[]
 	 */
-	protected $preRender = [];
+	public $onBuild = [];
 
 	/**
 	 * @var callable[]
 	 */
-	protected $postRender = [];
+	public $onPreRender = [];
+
+	/**
+	 * @var callable[]
+	 */
+	public $onPostRender = [];
 
 	/**
 	 * @var bool
@@ -71,45 +80,148 @@ class Table implements ITable
 	/**
 	 * @var RowsCollection|null
 	 */
-	private $rowsCollection;
+	protected $rowsCollection;
 
-	public function __construct(?RowsCollection $rowsCollection = NULL)
+	/**
+	 * @var IPaginationControl
+	 */
+	protected $paginationControl;
+
+	/**
+	 * @var bool
+	 */
+	private $rendered = FALSE;
+
+	/**
+	 * @var ITranslator|null
+	 */
+	protected $translator;
+
+	/**
+	 * @var Filters
+	 */
+	protected $filter;
+
+	/**
+	 * @var Config
+	 */
+	private $config;
+
+	public function __construct()
 	{
 		$this->tableWrapped = new TableWrapped($this);
-		$this->paginator = new Paginator($rowsCollection ? $rowsCollection->count() : 0);
+		$this->paginator = new Paginator();
 		$this->columnDriver = new ColumnDriver();
+		$this->filter = new Filters($this);
+	}
+
+	/**
+	 * @param Config $config
+	 */
+	public function injectConfig(Config $config)
+	{
+		$this->config = $config;
+		$this->translator = $this->config->getTranslator();
+	}
+
+	/**
+	 * @param IPaginationControl $paginationControl
+	 */
+	public function injectPaginator(IPaginationControl $paginationControl)
+	{
+		$this->paginationControl = $paginationControl;
+	}
+
+	/**
+	 * @param ITranslator $translator
+	 */
+	public function setTranslator(?ITranslator $translator)
+	{
+		$this->translator = $translator;
+		if ($this->getParent()) {
+			$this->template->setTranslator($translator);
+		}
+	}
+
+	/**
+	 * @return Translator|null
+	 */
+	public function getTranslator(): ?ITranslator
+	{
+		return $this->translator;
+	}
+
+	/**
+	 * @param mixed $presenter
+	 */
+	public function attached($presenter)
+	{
+		parent::attached($presenter);
+		if ($this->translator) {
+			$this->template->setTranslator($this->translator);
+		}
+		$this->build();
+	}
+
+	protected function build()
+	{
+		$rowsCollection = new RowsCollection();
+		$this->create($rowsCollection);
 		$this->rowsCollection = $rowsCollection;
+		$this->paginator->setCount($rowsCollection->count());
+		$this->onBuild($this);
 	}
 
 	/**
-	 * @param IContainer $container
-	 * @return ITable
+	 * @param RowsCollection $rowsCollection
+	 * @return RowsCollection
 	 */
-	public function build(IContainer $container): ITable
+	abstract protected function create(RowsCollection $rowsCollection);
+
+	public function render()
 	{
-		$this->control = $container;
-		$container->getComponent(TableControl::COLUMN_DRIVER_NAME);
-		$container->getComponent(TableControl::PAGINATOR_NAME);
-		$this->build = TRUE;
-		return $this;
-	}
-
-	/**
-	 * @param TableControl $control
-	 * @throws TableException
-	 * @throws \ReflectionException
-	 */
-	public function execute(TableControl $control)
-	{
-		$this->emitPreRender();
-
-		$this->createHeader();
-		$this->createBody();
-		$this->createFooter();
-
+		$this->onPreRender($this);
+		if (!$this->rendered) {
+			$this->createHeader();
+			$this->createBody();
+			$this->createFooter();
+		}
 
 		$this->getTableWrapped()->render();
-		$this->emitPostRender();
+		$this->onPostRender($this);
+		$this->rendered = TRUE;
+	}
+
+	public function renderPaginator()
+	{
+		$paginatorComponent = $this->getComponent("paginator");
+		$paginatorComponent->render();
+	}
+
+	/**
+	 * @return \Bajzany\Paginator\PaginationControl
+	 * @throws TableException
+	 */
+	public function createComponentPaginator()
+	{
+		$paginator = $this->getPaginator();
+		if (empty($paginator)) {
+			throw TableException::paginatorIsNotSet(get_class($this));
+		}
+		return $this->paginationControl->create($paginator);
+	}
+
+	/**
+	 * @param string $message
+	 * @param mixed $count
+	 * @return mixed
+	 */
+	protected function translate($message, $count = NULL)
+	{
+		if ($this->translator && !empty($message)) {
+			return call_user_func_array([$this->translator, "translate"], func_get_args());
+		}
+		return $message;
 	}
 
 	protected function createHeader()
@@ -120,48 +232,30 @@ class Table implements ITable
 				continue;
 			}
 			$item = $header->createItem();
-			$item->setHtml($column->getLabel());
-			$listener = $column->getListener();
-			$listener->emit(Column::ON_HEADER_CREATE, $item, $column);
+			$item->setHtml($this->translate($column->getLabel()));
+			$column->onHeaderCreate($item, $column);
 		}
 	}
 
 	/**
+	 * @param bool $cutByPaginator
 	 * @throws TableException
 	 * @throws \ReflectionException
 	 */
-	protected function createBody()
+	protected function createBody(bool $cutByPaginator = TRUE)
 	{
 		$body = $this->getTableWrapped()->getBody();
+		$list = $this->rowsCollection;
+		if ($cutByPaginator) {
+			$from = ($this->paginator->getPageSize() * $this->paginator->getCurrentPage()) - $this->paginator->getPageSize();
+			$list = array_slice($this->rowsCollection->toArray(), $from, $this->paginator->getPageSize());
+		}
 
-		$from = ($this->paginator->getPageSize() * $this->paginator->getCurrentPage()) - $this->paginator->getPageSize();
-		$list = array_slice($this->rowsCollection->toArray(), $from, $this->paginator->getPageSize());
-
-		foreach ($list as $data) {
-			$origin = [];
-			if (is_object($data)) {
-				$ref = new \ReflectionClass($data);
-				foreach ($ref->getProperties() as $property) {
-					$property->setAccessible(TRUE);
-					$origin[$property->getName()] = $property->getValue($data);
-				}
-				foreach ($ref->getMethods() as $method) {
-					if (substr($method->getName(), 0, 2) == "__") {
-						continue;
-					}
-					if (count($method->getParameters()) > 0) {
-						continue;
-					}
-					if (!$method->isPublic()) {
-						continue;
-					}
-					$method->setAccessible(TRUE);
-					$origin[$method->getName()] = function () use ($method, $data) {
-						return $method->invoke($data);
-					};
-				}
+		foreach ($list as $identifier => $data) {
+			$origin = $this->getData($data);
+			if (!$origin) {
+				continue;
 			}
-
 			$row = $body->createRow();
 			foreach ($this->getColumns() as $column) {
 				if (!$column->isAllowRender()) {
@@ -169,16 +263,50 @@ class Table implements ITable
 				}
 				$item = $row->createItem();
 				$this->usePattern($column, $origin, $item);
-				$listener = $column->getListener();
-				$listener->emit(Column::ON_BODY_CREATE, $item, $data);
+				$this->useComponents($item, $column, $identifier);
+				$column->onBodyCreate($item, $data, $column);
 			}
 		}
+	}
+
+	/**
+	 * @param mixed $data
+	 * @return mixed
+	 * @throws \ReflectionException
+	 */
+	protected function getData($data)
+	{
+		if (is_object($data)) {
+			$origin = [];
+			$ref = new \ReflectionClass($data);
+			foreach ($ref->getProperties() as $property) {
+				$property->setAccessible(TRUE);
+				$origin[$property->getName()] = $property->getValue($data);
+			}
+			foreach ($ref->getMethods() as $method) {
+				if (substr($method->getName(), 0, 2) == "__") {
+					continue;
+				}
+				if (count($method->getParameters()) > 0) {
+					continue;
+				}
+				if (!$method->isPublic()) {
+					continue;
+				}
+				$method->setAccessible(TRUE);
+				$origin[$method->getName()] = function () use ($method, $data) {
+					return $method->invoke($data);
+				};
+			}
+			return $origin;
+		}
+		return $data;
 	}
 
 	protected function createFooter()
 	{
 		$footer = $this->getTableWrapped()->getFooter();
-		foreach ($this->getColumns() as $column) {
+		foreach ($this->getColumns() as $identifier => $column) {
 			if (!$column->getFooter()) {
 				continue;
 			}
@@ -186,26 +314,47 @@ class Table implements ITable
 				continue;
 			}
 			$item = $footer->createItem();
-			$item->setHtml($column->getFooter());
-
-			$listener = $column->getListener();
-			$listener->emit(Column::ON_FOOTER_CREATE, $item);
+			$item->setHtml($this->translate($column->getFooter()));
+			$column->onFooterCreate($item, $column);
 		}
 	}
 
-	protected function emitPreRender()
+	/**
+	 * @param TableHtml $item
+	 * @param Column $column
+	 * @param string|integer $identifier
+	 */
+	protected function useComponents(TableHtml $item, Column $column, $identifier)
 	{
-		foreach ($this->preRender as $event) {
-			call_user_func_array($event, [$this]);
+		foreach ($column->getUsedComponents() as $name) {
+			$component = $this->getComponent($name . "_" . $identifier);
+			$item->addHtml($component);
 		}
 	}
 
-	protected function emitPostRender()
+	public function getComponent($name, $throw = TRUE, $args = [])
 	{
-		foreach ($this->postRender as $event) {
-			call_user_func_array($event, [$this]);
+		$exp = explode("_", $name);
+
+		if (count($exp) == 2 && !isset($this->components[$name])) {
+			$componentName = $exp[0];
+			$identifier = $exp[1];
+
+			$ucName = ucfirst($componentName);
+			$method = 'createComponent' . $ucName;
+			$data = $this->rowsCollection->get($identifier);
+
+			if ($ucName !== $componentName && method_exists($this, $method) && (new \ReflectionMethod($this, $method))->getName() === $method) {
+				$component = $this->$method($componentName, $data);
+				$this->addComponent($component, $name);
+				return $component;
+			}
 		}
+
+		$component = parent::getComponent($name, $throw);
+		return $component;
 	}
+
 
 	/**
 	 * @return TableWrapped
@@ -216,76 +365,11 @@ class Table implements ITable
 	}
 
 	/**
-	 * @return callable[]
-	 */
-	public function getPreRender(): array
-	{
-		return $this->preRender;
-	}
-
-	/**
-	 * @param callable $preRender
-	 * @return $this
-	 */
-	public function addPreRender(callable $preRender)
-	{
-		$this->preRender[] = $preRender;
-		return $this;
-	}
-
-	/**
-	 * @return callable[]
-	 */
-	public function getPostRender(): array
-	{
-		return $this->postRender;
-	}
-
-	/**
-	 * @param callable $postRender
-	 * @return $this
-	 */
-	public function addPostRender(callable $postRender)
-	{
-		$this->postRender[] = $postRender;
-		return $this;
-	}
-
-	/**
-	 * @return bool
-	 */
-	public function isBuild(): bool
-	{
-		return $this->build;
-	}
-
-	/**
 	 * @return IPaginator
 	 */
 	public function getPaginator(): ?IPaginator
 	{
 		return $this->paginator;
-	}
-
-	/**
-	 * @return TableControl
-	 * @throws TableException
-	 */
-	public function getControl(): TableControl
-	{
-		if (empty($this->control)) {
-			throw TableException::tableNotExecute();
-		}
-		return $this->control;
-	}
-
-	/**
-	 * @return \Nette\Application\UI\Presenter|null
-	 * @throws TableException
-	 */
-	public function getPresenter()
-	{
-		return $this->getControl()->getPresenter();
 	}
 
 	/**
@@ -454,7 +538,6 @@ class Table implements ITable
 				}
 				$labelItem = str_replace($key["search"], $translate, $labelItem);
 			}
-
 			$item->setHtml($labelItem);
 		}
 	}
@@ -470,26 +553,6 @@ class Table implements ITable
 			$value = call_user_func_array($filter["callable"], array_merge([$value, $column], $filter["config"]));
 		}
 		return $value;
-	}
-
-	/**
-	 * @param IContainer $control
-	 * @param string $name
-	 * @return string
-	 */
-	public function getComponentName(IContainer $control, string $name = '')
-	{
-		if ($control instanceof Presenter) {
-			return $name;
-		}
-
-		if (empty($name)) {
-			$controlName = $control->getName();
-		} else {
-			$controlName = $control->getName() . '-' . $name;
-		}
-
-		return $this->getComponentName($control->getParent(), $controlName);
 	}
 
 	/**
@@ -509,53 +572,6 @@ class Table implements ITable
 			];
 		}
 		return $keys;
-	}
-
-	/**
-	 * @param string $destination
-	 * @param array $parameters
-	 * @return string
-	 * @throws TableException
-	 * @throws \Nette\Application\UI\InvalidLinkException
-	 */
-	public function createLink(string $destination, array $parameters = [])
-	{
-		/** BUILD PAGINATOR PARAMS */
-		$paginatorControl = $this->getControl()->getComponent(TableControl::PAGINATOR_NAME);
-		$paginatorParameters = $this->getComponentParameters($paginatorControl->getParameters(), $paginatorControl);
-
-		/** BUILD SEARCH PARAMS */
-		$searchColumns = $this->getSearchColumns();
-		$params = [];
-		foreach ($searchColumns as $searchColumn) {
-			$params[$searchColumn->getInputName()] = $searchColumn->getSelectedValue();
-		}
-
-		$buildSearchParams = $this->getComponentParameters($params, $this->getControl());
-
-		$parameters = array_merge($parameters, $paginatorParameters);
-		$parameters = array_merge($parameters, $buildSearchParams);
-
-		return $this->getPresenter()->link($destination, $parameters);
-	}
-
-	/**
-	 * @param array $parameters
-	 * @param IContainer $container
-	 * @return array
-	 */
-	public function getComponentParameters(array $parameters, IContainer $container)
-	{
-		$name = $this->getComponentName($container);
-		$params = [];
-		foreach ($parameters as $parameter => $value) {
-			if (!$value) {
-				continue;
-			}
-			$params[$name . '-' . $parameter] = $value;
-		}
-
-		return $params;
 	}
 
 }

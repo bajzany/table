@@ -57,14 +57,14 @@ class SearchTextColumn extends SearchColumn implements IColumn, ISearchColumn
 	{
 		$inputName = $this->getInputName();
 		$defaultValue = $this->getSelectedValue();
-		$componentName = $this->getEntityTable()->getComponentName($this->getEntityTable()->getControl());
+//		$componentName = $this->getEntityTable()->getComponentName($this->getEntityTable()->getControl());
 
-		$field = TableHtml::el('input',[
+		$field = TableHtml::el('input', [
 			'name' => $inputName,
 			'placeholder' => $this->getLabel(),
 			'class' => 'form-control searchTable',
 			'data-url' => $this->getEntityTable()->getControl()->link('this'),
-			'data-control' => $componentName,
+			'data-control' => "xxx",
 			'value' => $defaultValue
 		]);
 		$item->setHtml($field);

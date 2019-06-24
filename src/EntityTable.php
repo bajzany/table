@@ -7,31 +7,23 @@
 
 namespace Bajzany\Table;
 
+use Bajzany\Paginator\IPaginationControl;
 use Bajzany\Paginator\QueryPaginator;
-use Bajzany\Table\EntityTable\Column;
-use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\EntityTable\ISearchColumn;
-use Bajzany\Table\Events\Listener;
-use Bajzany\Table\Events\TableEvents;
-use Bajzany\Table\Exceptions\TableException;
-use Bajzany\Table\TableObjects\Footer;
-use Bajzany\Table\TableObjects\Item;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
 use Kdyby\Doctrine\QueryBuilder;
-use Nette\Application\UI\Presenter;
-use Nette\ComponentModel\IContainer;
-use Nette\Utils\Html;
 
-class EntityTable extends Table
+/**
+ * @method onBuildQuery(EntityTable $entityTable)
+ */
+abstract class EntityTable extends Table
 {
 
-	const EVENT_ON_BUILD_QUERY = 'EVENT_ON_BUILD_QUERY';
-
 	/**
-	 * @var string
+	 * @var callable[]
 	 */
-	private $entityClass;
+	public $onBuildQuery = [];
 
 	/**
 	 * @var array
@@ -64,105 +56,37 @@ class EntityTable extends Table
 	private $queryBuilder;
 
 	/**
-	 * @var TableEvents
-	 */
-	private $tableEvents;
-
-	/** @var Listener  */
-	private $tableListener;
-
-	/**
 	 * @var array
 	 */
 	protected $registerComponents = [];
 
 	/**
-	 * @param string $entityClass
 	 * @param EntityManager $entityManager
-	 * @param TableEvents $tableEvents
 	 */
-	public function __construct(string $entityClass, EntityManager $entityManager, TableEvents $tableEvents)
+	public function injectEntityManager(EntityManager $entityManager)
 	{
-		parent::__construct();
-		$this->entityClass = $entityClass;
 		$this->entityManager = $entityManager;
 		$this->entityRepository = $this->getEntityManager()->getRepository($this->getEntityClass());
 		$this->queryBuilder = $this->entityRepository->createQueryBuilder('e');
-
 		$this->paginator = new QueryPaginator();
-
-		/** TABLE SUBSCRIBER REGISTRATION EVENTS */
-		$this->tableEvents = $tableEvents;
-		$this->tableListener = new Listener();
-		$group = $this->tableEvents->getEntityGroup($this->entityClass);
-		if (!empty($group)) {
-			foreach ($group->getEvents() as $event) {
-				foreach ($event->getSubscribedEvents() as $eventType => $subscribedEvent) {
-					$this->tableListener->create($eventType, [$event, $subscribedEvent]);
-				}
-			}
-		}
 	}
 
 	/**
-	 * @param TableControl $control
-	 * @throws TableException
+	 * @return string
 	 */
-	public function execute(TableControl $control)
+	abstract public function getEntityClass(): string;
+
+	protected function build()
 	{
-		if (!$this->isBuild()) {
-			throw TableException::notBuild(get_class($this));
-		}
-
-		$this->emitPreRender();
-
-		$this->createHeader();
-		$this->createBody();
-		$this->createFooter();
-
-		if (empty($this->getTableWrapped()->getFooter()->getItems())) {
-			foreach ($this->getTableWrapped()->getChildren() as $key => $child) {
-				if ($child instanceof Footer) {
-					$this->getTableWrapped()->removeChild($key);
-				}
-			}
-		}
-
-		if (empty($this->getTableWrapped()->getCaption()->getChildren())) {
-			foreach ($this->getTableWrapped()->getChildren() as $key => $child) {
-				if ($child instanceof TableHtml && $child->getName() == 'caption') {
-					$this->getTableWrapped()->removeChild($key);
-				}
-			}
-		}
-
-		$this->getTableWrapped()->render();
-		$this->emitPostRender();
+		$rowsCollection = new RowsCollection();
+		$this->create($rowsCollection);
+		$this->rowsCollection = $rowsCollection;
+		$this->getComponent("paginator");
+		$this->buildQuery();
+		$this->onBuild($this);
 	}
 
-	/**
-	 * @param IContainer $container
-	 * @return ITable
-	 */
-	public function build(IContainer $container): ITable
-	{
-		if ($this->isBuild()) {
-			return $this;
-		}
-
-		$this->control = $container;
-
-		$this->buildQuery($container);
-
-		$container->getComponent(TableControl::COLUMN_DRIVER_NAME);
-		$this->build = TRUE;
-		return $this;
-	}
-
-	/**
-	 * @param IContainer $container
-	 */
-	private function buildQuery(IContainer $container)
+	private function buildQuery()
 	{
 		/**
 		 * SEARCH COLUMN BUILD AND EXECUTE EVENTS
@@ -171,7 +95,6 @@ class EntityTable extends Table
 			if (!$column instanceof ISearchColumn) {
 				continue;
 			}
-
 			$column->build($this);
 		}
 
@@ -180,7 +103,7 @@ class EntityTable extends Table
 			$this->queryBuilder->addOrderBy($by, $sort);
 		}
 
-		$this->tableListener->emit(self::EVENT_ON_BUILD_QUERY, $this);
+		$this->onBuildQuery($this, $this->queryBuilder);
 
 		$query = $this->queryBuilder->getQuery();
 		$paginator = $this->getPaginator();
@@ -188,17 +111,16 @@ class EntityTable extends Table
 		if ($paginator instanceof QueryPaginator) {
 			$paginator->setQuery($query);
 			$query = $paginator->getQuery();
-			// IT'S BECAUSE ATTACH FUNCTION IN TABLECONTROL
-			$container->getComponent(TableControl::PAGINATOR_NAME);
 		}
 
-		$this->entities = $query->getResult();
+		foreach ($query->getResult() as $item) {
+			$this->rowsCollection->add($item);
+		}
 	}
 
 	protected function createHeader()
 	{
 		$header = $this->getTableWrapped()->getHeader();
-
 		foreach ($this->getColumns() as $column) {
 			if (!$column->isAllowRender()) {
 				continue;
@@ -207,39 +129,36 @@ class EntityTable extends Table
 			if ($column instanceof ISearchColumn) {
 				$column->render($item);
 			} else {
-				$item->setHtml($column->getLabel());
+				$item->setHtml($this->translate($column->getLabel()));
 			}
-
-			$listener = $column->getListener();
-			$listener->emit(Column::ON_HEADER_CREATE, $item, $column);
+			$column->onHeaderCreate($item, $column);
 		}
 	}
 
 	/**
-	 * @throws TableException
+	 * @param bool $cutByPaginator
+	 * @throws Exceptions\TableException
+	 * @throws \ReflectionException
 	 */
-	protected function createBody()
+	protected function createBody(bool $cutByPaginator = TRUE)
 	{
-		$body = $this->getTableWrapped()->getBody();
-		foreach ($this->entities as $entity) {
-			$row = $body->createRow();
+		parent::createBody(FALSE);
+	}
 
-			$origin = $this->getEntityManager()->getUnitOfWork()->getOriginalEntityData($entity);
-			if (empty($origin)) {
-				continue;
-			}
-			$identifiers = $this->getEntityManager()->getUnitOfWork()->getEntityIdentifier($entity);
-			$origin = array_merge($origin, $identifiers);
-			foreach ($this->getColumns() as $column) {
-				if (!$column->isAllowRender()) {
-					continue;
-				}
-				$item = $row->createItem();
-				$this->usePattern($column, $origin, $item);
-				$listener = $column->getListener();
-				$listener->emit(Column::ON_BODY_CREATE, $item, $entity);
-			}
+	/**
+	 * @param object $entity
+	 * @return array|mixed|void
+	 */
+	protected function getData($entity)
+	{
+		$origin = $this->getEntityManager()->getUnitOfWork()->getOriginalEntityData($entity);
+		if (empty($origin)) {
+			return;
 		}
+		$identifiers = $this->getEntityManager()->getUnitOfWork()->getEntityIdentifier($entity);
+		$origin = array_merge($origin, $identifiers);
+
+		return $origin;
 	}
 
 	/**
@@ -248,24 +167,6 @@ class EntityTable extends Table
 	public function getEntityManager(): EntityManager
 	{
 		return $this->entityManager;
-	}
-
-	/**
-	 * @return string
-	 */
-	public function getEntityClass(): string
-	{
-		return $this->entityClass;
-	}
-
-	/**
-	 * @param string $entityClass
-	 * @return $this
-	 */
-	public function setEntityClass($entityClass)
-	{
-		$this->entityClass = $entityClass;
-		return $this;
 	}
 
 	/**
@@ -346,55 +247,6 @@ class EntityTable extends Table
 	public function setQueryBuilder(QueryBuilder $queryBuilder)
 	{
 		$this->queryBuilder = $queryBuilder;
-	}
-
-	/**
-	 * @param string $name
-	 * @param TableComponent $tableComponent
-	 */
-	public function addRegisterComponent(string $name, TableComponent $tableComponent)
-	{
-		$this->registerComponents[$name] = $tableComponent;
-	}
-
-	/**
-	 * @return TableComponent[]
-	 */
-	public function getRegisterComponents(): array
-	{
-		return $this->registerComponents;
-	}
-
-	/**
-	 * @param string $name
-	 * @return TableComponent|null
-	 */
-	public function getRegisterComponentByName(string $name): ?TableComponent
-	{
-		if (array_key_exists($name, $this->registerComponents)) {
-			return $this->registerComponents[$name];
-		}
-		return NULL;
-	}
-
-	/**
-	 * @param string $name
-	 * @param int $identification
-	 * @param array $args
-	 * @return string
-	 * @throws TableException
-	 */
-	public function getComponentHtml(string $name, int $identification, ...$args)
-	{
-		$component = $this->getControl()->getComponent($name . '_' . $identification, FALSE, ...$args);
-		if ($component && method_exists($component, 'render')) {
-			ob_start();
-			$component->render();
-			$output = ob_get_contents();
-			ob_end_clean();
-			return $output;
-		}
-		return '';
 	}
 
 }

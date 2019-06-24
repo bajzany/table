@@ -7,9 +7,11 @@
 
 namespace Bajzany\Table\EntityTable;
 
-use Bajzany\Table\Events\Listener;
-use Nette\Application\UI\Control;
-
+/**
+ * @method onBodyCreate()
+ * @method onHeaderCreate()
+ * @method onFooterCreate()
+ */
 interface IColumn
 {
 
@@ -17,29 +19,6 @@ interface IColumn
 	 * @return string
 	 */
 	public function getKey(): string;
-
-	/**
-	 * @return Listener
-	 */
-	public function getListener(): Listener;
-
-	/**
-	 * @param callable $callable
-	 * @return $this
-	 */
-	public function onHeaderCreate(callable $callable);
-
-	/**
-	 * @param callable $callable
-	 * @return $this
-	 */
-	public function onBodyCreate(callable $callable);
-
-	/**
-	 * @param callable $callable
-	 * @return $this
-	 */
-	public function onFooterCreate(callable $callable);
 
 	/**
 	 * @return string
@@ -87,14 +66,14 @@ interface IColumn
 	public function setFooter($footer);
 
 	/**
-	 * @return Control[]
+	 * @return array
 	 */
-	public function getComponents(): array;
+	public function getUsedComponents(): array;
 
 	/**
-	 * @param Control $control
+	 * @param string $name
 	 */
-	public function addComponent(Control $control);
+	public function useComponent(string $name);
 
 	/**
 	 * @return bool
