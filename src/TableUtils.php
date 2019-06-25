@@ -26,7 +26,7 @@ trait TableUtils
 		return Html::el("a", [
 			"class" => "btn btn-danger ajax",
 			"data-toggle" => "tooltip",
-			"title" => $tooltip,
+			"title" => $this->translate($tooltip),
 			"href" => $link,
 		])->setHtml("<i class=\"fa fa-trash\" aria-hidden=\"true\"></i>");
 	}
@@ -44,7 +44,7 @@ trait TableUtils
 		return Html::el("a", [
 			"class" => "btn btn-default ajax",
 			"data-toggle" => "tooltip",
-			"title" => $tooltip,
+			"title" => $this->translate($tooltip),
 			"href" => $link,
 		])->setHtml("<i class=\"{$icon}\" aria-hidden=\"true\"></i>");
 	}
@@ -62,7 +62,7 @@ trait TableUtils
 		return Html::el("a", [
 			"class" => "btn btn-default ajax",
 			"data-toggle" => "tooltip",
-			"title" => $tooltip,
+			"title" => $this->translate($tooltip),
 			"href" => $link,
 		])->setHtml("<i class=\"{$icon}\" aria-hidden=\"true\"></i>");
 	}
