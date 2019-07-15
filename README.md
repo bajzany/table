@@ -9,7 +9,6 @@ Required:
 - [nette/bootstrap](https://packagist.org/packages/nette/bootstrap)
 - [latte/latte](https://packagist.org/packages/latte/latte)
 - [nette/utils](https://packagist.org/packages/nette/utils)
-- [chomenko/app-webloader](https://packagist.org/packages/chomenko/app-webloader)
 - [kdyby/events](https://packagist.org/packages/kdyby/events)
 - [kdyby/doctrine](https://packagist.org/packages/kdyby/doctrine)
 - [bajzany/paginator](https://packagist.org/packages/bajzany/paginator)
