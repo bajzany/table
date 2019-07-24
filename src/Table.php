@@ -14,9 +14,15 @@ use Bajzany\Table\ColumnDriver\ColumnDriver;
 use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\Exceptions\TableException;
+use Bajzany\Table\Listener\TableEvents;
 use Bajzany\Table\TableObjects\Item;
 use Bajzany\Table\TableObjects\TableWrapped;
+use Doctrine\Common\Collections\Criteria;
 use Nette\Application\UI\Control;
+use Nette\Application\UI\Presenter;
+use Nette\ComponentModel\IComponent;
+use Nette\Http\Session;
+use Nette\Http\SessionSection;
 use Nette\Localization\ITranslator;
 use Nette\Utils\Html;
 
@@ -29,6 +35,8 @@ abstract class Table extends Control
 {
 
 	const PATTERN_REGEX = "~{{\s([a-zA-Z_0-9]+)\s}}~";
+	const SESSION_EXPIRATION = '10 minutes';
+	const TABLE_PREFIX = 'TABLE_';
 
 	use TableUtils;
 
@@ -56,11 +64,6 @@ abstract class Table extends Control
 	 * @var bool
 	 */
 	protected $build = FALSE;
-
-	/**
-	 * @var TableControl
-	 */
-	protected $control;
 
 	/**
 	 * @var Paginator
@@ -107,12 +110,25 @@ abstract class Table extends Control
 	 */
 	private $config;
 
-	public function __construct()
+	/**
+	 * @var Session
+	 */
+	private $session;
+
+	private $criteria;
+
+	/**
+	 * @param Session $session
+	 * @param TableEvents $tableEvents
+	 */
+	public function __construct(Session $session)
 	{
 		$this->tableWrapped = new TableWrapped($this);
 		$this->paginator = new Paginator();
 		$this->columnDriver = new ColumnDriver();
 		$this->filter = new Filters($this);
+		$this->session = $session;
+		$this->criteria = new Criteria();
 	}
 
 	/**
@@ -160,6 +176,9 @@ abstract class Table extends Control
 		if ($this->translator) {
 			$this->template->setTranslator($this->translator);
 		}
+
+		$this->session = $this->session->getSection(self::TABLE_PREFIX . $this->getComponentName($this));
+		$this->session->setExpiration(self::SESSION_EXPIRATION);
 		$this->build();
 	}
 
@@ -168,6 +187,14 @@ abstract class Table extends Control
 		$rowsCollection = new RowsCollection();
 		$this->create($rowsCollection);
 		$this->rowsCollection = $rowsCollection;
+		foreach ($this->getColumns() as $column) {
+			if ($column->isSortable()) {
+				$column->buildSortableColumn($this);
+			}
+			if ($column->isSearchable()) {
+				$column->buildSearchColumn($this);
+			}
+		}
 		$this->paginator->setCount($rowsCollection->count());
 		$this->onBuild($this);
 	}
@@ -232,7 +259,17 @@ abstract class Table extends Control
 				continue;
 			}
 			$item = $header->createItem();
-			$item->setHtml($this->translate($column->getLabel()));
+
+			if ($column->isSortable()) {
+				$column->renderSortableColumn($item, $this);
+			}
+			if ($column->isSearchable()) {
+				$column->renderSearchColumn($item, $this);
+			} else {
+				if (!empty($column->getLabel())) {
+					$item->addHtml($this->translate($column->getLabel()));
+				}
+			}
 			$column->onHeaderCreate($item, $column);
 		}
 	}
@@ -246,9 +283,10 @@ abstract class Table extends Control
 	{
 		$body = $this->getTableWrapped()->getBody();
 		$list = $this->rowsCollection;
+		$list = $list->matching($this->criteria);
 		if ($cutByPaginator) {
 			$from = ($this->paginator->getPageSize() * $this->paginator->getCurrentPage()) - $this->paginator->getPageSize();
-			$list = array_slice($this->rowsCollection->toArray(), $from, $this->paginator->getPageSize());
+			$list->slice($from, $this->paginator->getPageSize());
 		}
 
 		foreach ($list as $identifier => $data) {
@@ -429,55 +467,6 @@ abstract class Table extends Control
 	}
 
 	/**
-	 * @param string $key
-	 * @return SearchTextColumn
-	 * @throws TableException
-	 */
-	public function createSearchTextColumn(string $key)
-	{
-		if ($this->issetColumnKey($key)) {
-			throw TableException::columnKeyExist($key);
-		}
-
-		$column = new SearchTextColumn($key);
-		$this->columns[$key] = $column;
-		$this->columnDriver->addAvailableColumn($key, $column);
-		return $column;
-	}
-
-	/**
-	 * @param string $key
-	 * @return SearchSelectColumn
-	 * @throws TableException
-	 */
-	public function createSearchSelectColumn(string $key)
-	{
-		if ($this->issetColumnKey($key)) {
-			throw TableException::columnKeyExist($key);
-		}
-
-		$column = new SearchSelectColumn($key);
-		$this->columns[$key] = $column;
-		$this->columnDriver->addAvailableColumn($key, $column);
-		return $column;
-	}
-
-	/**
-	 * @return SearchColumn[]
-	 */
-	public function getSearchColumns()
-	{
-		$searchColumns = [];
-		foreach ($this->columns as $column) {
-			if ($column instanceof SearchColumn) {
-				$searchColumns[] = $column;
-			}
-		}
-
-		return $searchColumns;
-	}
-
-	/**
 	 * @param IColumn $column
 	 * @return $this
 	 * @throws TableException
@@ -572,6 +561,44 @@ abstract class Table extends Control
 			];
 		}
 		return $keys;
+	}
+
+	/**
+	 * @param IComponent $component
+	 * @param string $name
+	 * @return string
+	 */
+	private function getComponentName($component, $name = "")
+	{
+		if ($component instanceof Presenter || !$component) {
+			return $name;
+		}
+		$name = $component->getName() . ((!empty($name) ? "-" : "") . $name);
+		return $this->getComponentName($component->getParent(), $name);
+	}
+
+	/**
+	 * @return SessionSection
+	 */
+	public function getSession(): SessionSection
+	{
+		return $this->session;
+	}
+
+	/**
+	 * @return RowsCollection|null
+	 */
+	public function getRowsCollection(): ?RowsCollection
+	{
+		return $this->rowsCollection;
+	}
+
+	/**
+	 * @return Criteria
+	 */
+	public function getCriteria(): Criteria
+	{
+		return $this->criteria;
 	}
 
 }

@@ -52,14 +52,6 @@ class TableException extends \Exception
 	/**
 	 * @return TableException
 	 */
-	public static function searchColumnIsAlreadyBuild(string $key)
-	{
-		return new self("Search column '{$key}' is already build");
-	}
-
-	/**
-	 * @return TableException
-	 */
 	public static function columnKeyExist(string $key)
 	{
 		return new self("Column key '{$key}' exists.");

@@ -9,10 +9,11 @@ namespace Bajzany\Table;
 
 use Bajzany\Paginator\IPaginationControl;
 use Bajzany\Paginator\QueryPaginator;
-use Bajzany\Table\EntityTable\ISearchColumn;
+use Bajzany\Table\Listener\TableEvents;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
 use Kdyby\Doctrine\QueryBuilder;
+use Nette\Http\Session;
 
 /**
  * @method onBuildQuery(EntityTable $entityTable)
@@ -61,6 +62,17 @@ abstract class EntityTable extends Table
 	protected $registerComponents = [];
 
 	/**
+	 * @var TableEvents
+	 */
+	private $tableEvents;
+
+	public function __construct(Session $session, TableEvents $tableEvents)
+	{
+		parent::__construct($session);
+		$this->tableEvents = $tableEvents;
+	}
+
+	/**
 	 * @param EntityManager $entityManager
 	 */
 	public function injectEntityManager(EntityManager $entityManager)
@@ -82,28 +94,34 @@ abstract class EntityTable extends Table
 		$this->create($rowsCollection);
 		$this->rowsCollection = $rowsCollection;
 		$this->getComponent("paginator");
+
+		foreach ($this->getColumns() as $column) {
+			if ($column->isSortable()) {
+				$column->buildSortableColumn($this);
+			}
+			if ($column->isSearchable()) {
+				$column->buildSearchColumn($this);
+			}
+		}
+
 		$this->buildQuery();
 		$this->onBuild($this);
 	}
 
 	private function buildQuery()
 	{
-		/**
-		 * SEARCH COLUMN BUILD AND EXECUTE EVENTS
-		 */
-		foreach ($this->getColumns() as $column) {
-			if (!$column instanceof ISearchColumn) {
-				continue;
-			}
-			$column->build($this);
-		}
-
 		$this->queryBuilder->whereCriteria($this->getWhere());
 		foreach ($this->getSort() as $by => $sort) {
 			$this->queryBuilder->addOrderBy($by, $sort);
 		}
 
 		$this->onBuildQuery($this, $this->queryBuilder);
+		$group = $this->tableEvents->getEntityGroup($this->getEntityClass());
+		if (!empty($group)) {
+			foreach ($group->getEvents() as $event) {
+				$event->onBuildQuery($this);
+			}
+		}
 
 		$query = $this->queryBuilder->getQuery();
 		$paginator = $this->getPaginator();
@@ -120,19 +138,7 @@ abstract class EntityTable extends Table
 
 	protected function createHeader()
 	{
-		$header = $this->getTableWrapped()->getHeader();
-		foreach ($this->getColumns() as $column) {
-			if (!$column->isAllowRender()) {
-				continue;
-			}
-			$item = $header->createItem();
-			if ($column instanceof ISearchColumn) {
-				$column->render($item);
-			} else {
-				$item->setHtml($this->translate($column->getLabel()));
-			}
-			$column->onHeaderCreate($item, $column);
-		}
+		parent::createHeader();
 	}
 
 	/**

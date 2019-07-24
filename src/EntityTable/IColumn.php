@@ -7,6 +7,10 @@
 
 namespace Bajzany\Table\EntityTable;
 
+use Bajzany\Table\Table;
+use Bajzany\Table\TableObjects\HeaderItem;
+use Nette\Application\UI\Control;
+
 /**
  * @method onBodyCreate()
  * @method onHeaderCreate()
@@ -85,5 +89,63 @@ interface IColumn
 	 * @return $this
 	 */
 	public function setAllowRender(bool $render);
+
+	/**
+	 * @param bool $bool
+	 * @return $this
+	 */
+	public function setSearchable(bool $bool);
+
+	/**
+	 * @return bool
+	 */
+	public function isSearchable():bool;
+
+	/**
+	 * @return bool
+	 */
+	public function isSortable(): bool;
+
+	/**
+	 * @param bool $sortable
+	 * @return $this
+	 */
+	public function setSortable(bool $sortable);
+
+	/**
+	 * @param HeaderItem $headerItem
+	 * @param Control $control
+	 * @return mixed
+	 */
+	public function renderSearchColumn(HeaderItem $headerItem, Control $control);
+
+	/**
+	 * @param Table $table
+	 */
+	public function buildSearchColumn(Table $table);
+
+	/**
+	 * @param string $name
+	 * @param mixed $title
+	 * @return $this
+	 */
+	public function addSearchSelectOption(string $name, $title);
+
+	/**
+	 * @param array $searchSelectOptions
+	 * @return $this
+	 */
+	public function setSearchSelectOptions(array $searchSelectOptions);
+
+	/**
+	 * @param Table $table
+	 */
+	public function buildSortableColumn(Table $table);
+
+	/**
+	 * @param HeaderItem $headerItem
+	 * @param Control $control
+	 */
+	public function renderSortableColumn(HeaderItem $headerItem, Control $control);
 
 }

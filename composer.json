@@ -25,11 +25,19 @@
     "nette/utils": "^2.4",
     "kdyby/events": "^3.1",
     "kdyby/doctrine": "^3.3",
-    "bajzany/paginator": "^1.0"
+    "bajzany/paginator": "^1.0",
+    "nettpack/stage": "^1.0"
   },
   "autoload": {
     "psr-4": {
       "Bajzany\\Table\\": "src/"
+    }
+  },
+  "extra": {
+    "nettpack": {
+      "resolve": {
+        "TableComponent": "./src/Assets/main.js"
+      }
     }
   }
 }

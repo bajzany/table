@@ -7,7 +7,16 @@
 
 namespace Bajzany\Table\EntityTable;
 
+use Bajzany\Table\EntityTable;
+use Bajzany\Table\Table;
+use Bajzany\Table\TableHtml;
+use Bajzany\Table\TableObjects\HeaderItem;
+use Doctrine\Common\Collections\Criteria;
+use Nette\Application\UI\Control;
+use Nette\Application\UI\Presenter;
+use Nette\ComponentModel\IComponent;
 use Nette\SmartObject;
+use Nette\Utils\Html;
 
 /**
  * @method onBodyCreate()
@@ -19,6 +28,8 @@ class Column implements IColumn
 
 	use SmartObject;
 
+	const SEARCH_NAME_PREFIX = 'searchTable_';
+	const SORTING_NAME_PREFIX = 'sortingTable_';
 	const ON_HEADER_CREATE = "onHeaderCreate";
 	const ON_BODY_CREATE = "onBodyCreate";
 	const ON_FOOTER_CREATE = "onFooterCreate";
@@ -37,6 +48,16 @@ class Column implements IColumn
 	 * @var callable[]
 	 */
 	public $onFooterCreate = [];
+
+	/**
+	 * @var callable[]
+	 */
+	public $onSearchAction = [];
+
+	/**
+	 * @var callable[]
+	 */
+	public $onSortingAction = [];
 
 	/**
 	 * @var string
@@ -72,6 +93,31 @@ class Column implements IColumn
 	 * @var bool
 	 */
 	private $allowRender = TRUE;
+
+	/**
+	 * @var bool
+	 */
+	private $searchable = FALSE;
+
+	/**
+	 * @var bool
+	 */
+	private $sortable = FALSE;
+
+	/**
+	 * @var string|null
+	 */
+	private $selectedSearchValue;
+
+	/**
+	 * @var string|null
+	 */
+	private $selectedSortValue;
+
+	/**
+	 * @var array
+	 */
+	private $searchSelectOptions = [];
 
 	/**
 	 * @param string $key
@@ -198,6 +244,383 @@ class Column implements IColumn
 	public function setAllowRender(bool $allowRender)
 	{
 		$this->allowRender = $allowRender;
+		return $this;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isSearchable(): bool
+	{
+		return $this->searchable;
+	}
+
+	/**
+	 * @param bool $searchable
+	 * @return $this
+	 */
+	public function setSearchable(bool $searchable)
+	{
+		$this->searchable = $searchable;
+		return $this;
+	}
+
+	/**
+	 * @param Table $table
+	 * @return bool
+	 */
+	private function isSearching(Table $table)
+	{
+		$search = FALSE;
+
+		foreach ($table->getParameters() as $parameterName => $value) {
+			if (strpos($parameterName, self::SEARCH_NAME_PREFIX) !== FALSE) {
+				return TRUE;
+			}
+		}
+		return $search;
+	}
+
+	private function applySessionSearchParams(Table $table)
+	{
+		$this->removeSearch($table);
+		foreach ($table->getParameters() as $parameterName => $value) {
+			$table->getSession()->searchFields[$parameterName] = $value;
+		}
+	}
+
+	private function removeSearch(Table $table)
+	{
+		$table->getSession()->searchFields = [];
+	}
+
+	/**
+	 * @internal
+	 *
+	 * @param Table $table
+	 */
+	public function buildSearchColumn(Table $table)
+	{
+		if ($this->isSearching($table)) {
+			$this->applySessionSearchParams($table);
+		}
+		$this->setSelectedSearchValue($this->getDefaultSearchValue($table));
+
+		if (!empty($this->onSearchAction)) {
+			$this->onSearchAction($table, $this->getSelectedSearchValue());
+		} else {
+			if ($table instanceof EntityTable) {
+				$metadata = $table->getEntityManager()->getClassMetadata($table->getEntityClass());
+				$uniq = substr(str_shuffle('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'), 0, 12);
+				if (in_array($this->getKey(), $metadata->getFieldNames())) {
+					$table->getQueryBuilder()->andWhere("e.{$this->getKey()} LIKE :{$uniq}")
+						->setParameter($uniq, '%' . $this->getSelectedSearchValue() . '%');
+				}
+			} else {
+				foreach ($table->getRowsCollection()->toArray() as $key => $values) {
+					if (array_key_exists($this->getKey(), $values)) {
+						if ($this->getSelectedSearchValue() === '') {
+							continue;
+						}
+						if (strpos($values[$this->getKey()], $this->getSelectedSearchValue()) === FALSE) {
+							continue;
+						}
+						$table->getRowsCollection()->remove($key);
+					}
+				}
+			}
+
+		}
+	}
+
+	/**
+	 * @param Table $table
+	 * @return string|null
+	 */
+	public function getDefaultSearchValue(Table $table)
+	{
+		if (!is_array($table->getSession()->searchFields)) {
+			$table->getSession()->searchFields = [];
+		}
+
+		if (array_key_exists($this->getSearchInputName(), $table->getSession()->searchFields)) {
+			return $table->getSession()->searchFields[$this->getSearchInputName()];
+		}
+		return NULL;
+	}
+
+	/**
+	 * @param HeaderItem $headerItem
+	 * @param Control $control
+	 * @return mixed|void
+	 * @throws \Nette\Application\UI\InvalidLinkException
+	 */
+	public function renderSearchColumn(HeaderItem $headerItem, Control $control)
+	{
+		$inputName = $this->getSearchInputName();
+		$defaultValue = $this->getSelectedSearchValue();
+		$componentName = $this->getComponentName($control);
+		if (!empty($this->getSearchSelectOptions())) {
+			$select = TableHtml::el('select', [
+				'name' => $inputName,
+				'placeholder' => $this->getLabel(),
+				'class' => 'form-control searchTable',
+				'data-url' => $control->link('this'),
+				'data-control' => $componentName,
+			]);
+
+			$defaultOption = TableHtml::el('option', ['value' => '']);
+			$defaultOption->setText($this->getKey());
+			$select->addHtml($defaultOption);
+
+			foreach ($this->getSearchSelectOptions() as $name => $title) {
+				$opt = TableHtml::el('option', ['value' => $name]);
+				if ($defaultValue !== NULL && $defaultValue !== '' && $name == $defaultValue) {
+					$opt->setAttribute('selected', true);
+				}
+
+				$opt->setText($title);
+				$select->addHtml($opt);
+			}
+
+			$headerItem->addHtml($select);
+		} else {
+			$field = TableHtml::el('input', [
+				'name' => $inputName,
+				'placeholder' => $this->getLabel(),
+				'class' => 'form-control searchTable',
+				'data-url' => $control->link('this'),
+				'data-control' => $componentName,
+				'value' => $defaultValue
+			]);
+			$headerItem->addHtml($field);
+		}
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getSoringInputName()
+	{
+		return self::SORTING_NAME_PREFIX . $this->getKey();
+	}
+
+	/**
+	 * @param Table $table
+	 * @return string|null
+	 */
+	public function getDefaultSortingValue(Table $table)
+	{
+		if (!is_array($table->getSession()->sortingFields)) {
+			$table->getSession()->sortingFields = [];
+		}
+
+		if (array_key_exists($this->getSoringInputName(), $table->getSession()->sortingFields)) {
+			return $table->getSession()->sortingFields[$this->getSoringInputName()];
+		}
+		return NULL;
+	}
+
+	/**
+	 * @return string|null
+	 */
+	public function getSelectedSortValue(): ?string
+	{
+		return $this->selectedSortValue;
+	}
+
+	/**
+	 * @param string|null $selectedSortValue
+	 * @return $this
+	 */
+	public function setSelectedSortValue($selectedSortValue)
+	{
+		$this->selectedSortValue = $selectedSortValue;
+		return $this;
+	}
+
+	/**
+	 * @param Table $table
+	 * @return bool
+	 */
+	private function isSorting(Table $table)
+	{
+		$search = FALSE;
+
+		foreach ($table->getParameters() as $parameterName => $value) {
+			if (strpos($parameterName, self::SORTING_NAME_PREFIX) !== FALSE) {
+				return TRUE;
+			}
+		}
+		return $search;
+	}
+
+	private function applySessionSortingParams(Table $table)
+	{
+		$this->removeSorting($table);
+		foreach ($table->getParameters() as $parameterName => $value) {
+			$table->getSession()->sortingFields[$parameterName] = $value;
+		}
+	}
+
+	private function removeSorting(Table $table)
+	{
+		$table->getSession()->sortingFields = [];
+	}
+
+	/**
+	 * @param Table $table
+	 */
+	public function buildSortableColumn(Table $table)
+	{
+		if ($this->isSorting($table)) {
+			$this->applySessionSortingParams($table);
+		}
+		$this->setSelectedSortValue($this->getDefaultSortingValue($table));
+		if (empty($this->getSelectedSortValue())) {
+			return;
+		}
+
+		if (!empty($this->onSortingAction)) {
+			$this->onSortingAction($table, $this->getSelectedSortValue());
+		} else {
+			if ($table instanceof EntityTable) {
+				$metadata = $table->getEntityManager()->getClassMetadata($table->getEntityClass());
+				if (in_array($this->getKey(), $metadata->getFieldNames())) {
+					$table->getQueryBuilder()->addOrderBy("e.{$this->getKey()}", $this->getSelectedSortValue());
+				}
+			} else {
+
+				$table->getCriteria()->orderBy([$this->getKey() => $this->getSelectedSortValue()]);
+
+//
+//				barDump($this->getKey());
+//				barDump($this->getSelectedSortValue());
+//
+//				barDump($table->getRowsCollection());
+
+
+
+//				$criteria = new Criteria(NULL, ['sorting' => Criteria::ASC]);
+//				$children = $table->getRowsCollection()->matching($criteria);
+//
+			}
+		}
+
+	}
+
+	/**
+	 * @param HeaderItem $headerItem
+	 * @param Control $control
+	 * @throws \Nette\Application\UI\InvalidLinkException
+	 */
+	public function renderSortableColumn(HeaderItem $headerItem, Control $control)
+	{
+		$inputName = $this->getSoringInputName();
+		$defaultValue = $this->getSelectedSortValue();
+		$componentName = $this->getComponentName($control);
+
+		$mode = $defaultValue;
+		if ($defaultValue === NULL) {
+			$mode = 'undefined';
+		}
+
+		$modeClass = $mode === 'undefined' ? 'fa-sort' : ($mode === 'ASC' ? 'fa-sort-up' : 'fa-sort-down');
+		$i = Html::el('i', [
+			'data-url' => $control->link('this'),
+			'data-control' => $componentName,
+			'data-name' => $inputName,
+			'data-mode' => $mode,
+			'class' => "table-sortable fas {$modeClass}"
+		]);
+
+		$headerItem->addHtml($i);
+	}
+
+	/**
+	 * @param IComponent $component
+	 * @param string $name
+	 * @return string
+	 */
+	private function getComponentName($component, $name = "")
+	{
+		if ($component instanceof Presenter || !$component) {
+			return $name;
+		}
+		$name = $component->getName() . ((!empty($name) ? "-" : "") . $name);
+		return $this->getComponentName($component->getParent(), $name);
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getSearchInputName()
+	{
+		return self::SEARCH_NAME_PREFIX . $this->getKey();
+	}
+
+	/**
+	 * @return string|null
+	 */
+	public function getSelectedSearchValue(): ?string
+	{
+		return $this->selectedSearchValue;
+	}
+
+	/**
+	 * @param string|null $selectedSearchValue
+	 * @return $this
+	 */
+	public function setSelectedSearchValue($selectedSearchValue)
+	{
+		$this->selectedSearchValue = $selectedSearchValue;
+		return $this;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getSearchSelectOptions(): array
+	{
+		return $this->searchSelectOptions;
+	}
+
+	/**
+	 * @param string $name
+	 * @param mixed $title
+	 * @return $this
+	 */
+	public function addSearchSelectOption(string $name, $title)
+	{
+		$this->searchSelectOptions[$name] = $title;
+		return $this;
+	}
+
+	/**
+	 * @param array $searchSelectOptions
+	 * @return $this
+	 */
+	public function setSearchSelectOptions(array $searchSelectOptions)
+	{
+		$this->searchSelectOptions = $searchSelectOptions;
+		return $this;
+	}
+
+	/**
+	 * @return bool
+	 */
+	public function isSortable(): bool
+	{
+		return $this->sortable;
+	}
+
+	/**
+	 * @param bool $sortable
+	 * @return $this
+	 */
+	public function setSortable(bool $sortable)
+	{
+		$this->sortable = $sortable;
 		return $this;
 	}
 

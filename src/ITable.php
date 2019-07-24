@@ -10,7 +10,6 @@ namespace Bajzany\Table;
 use Bajzany\Paginator\IPaginator;
 use Bajzany\Table\ColumnDriver\ColumnDriver;
 use Bajzany\Table\EntityTable\IColumn;
-use Bajzany\Table\EntityTable\SearchColumn;
 use Nette\ComponentModel\IContainer;
 
 interface ITable
@@ -88,10 +87,5 @@ interface ITable
 	 * @return array
 	 */
 	public function getComponentParameters(array $parameters, IContainer $container);
-
-	/**
-	 * @return SearchColumn[]
-	 */
-	public function getSearchColumns();
 
 }

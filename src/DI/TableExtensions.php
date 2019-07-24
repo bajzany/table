@@ -9,12 +9,15 @@ namespace Bajzany\Table\DI;
 
 use Bajzany\Table\ColumnDriver\IColumnDriverControl;
 use Bajzany\Table\Config;
+use Bajzany\Table\Listener\TableEvents;
 use Nette\Configurator;
 use Nette\DI\Compiler;
 use Nette\DI\CompilerExtension;
 
 class TableExtensions extends CompilerExtension
 {
+
+	const TAG_EVENT = 'entityTable.events';
 
 	/**
 	 * @var array
@@ -31,6 +34,9 @@ class TableExtensions extends CompilerExtension
 
 		$builder->addDefinition($this->prefix('config'))
 			->setFactory(Config::class);
+
+		$builder->addDefinition($this->prefix("TableEvents"))
+			->setFactory(TableEvents::class);
 	}
 
 	public function beforeCompile()
@@ -44,6 +50,12 @@ class TableExtensions extends CompilerExtension
 		if ($config["translator"]) {
 			$translator = $builder->getByType($config["translator"]);
 			$configDef->addSetup("setTranslator", [$builder->getDefinition($translator)]);
+		}
+
+		$builder = $this->getContainerBuilder();
+		$event = $builder->getDefinition($this->prefix("TableEvents"));
+		foreach ($builder->findByTag(self::TAG_EVENT) as $name => $entityClass) {
+			$event->addSetup("addEntityGroupEvent", [$entityClass, $builder->getDefinition($name)]);
 		}
 	}
 

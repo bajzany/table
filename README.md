@@ -12,336 +12,272 @@ Required:
 - [kdyby/events](https://packagist.org/packages/kdyby/events)
 - [kdyby/doctrine](https://packagist.org/packages/kdyby/doctrine)
 - [bajzany/paginator](https://packagist.org/packages/bajzany/paginator)
+- [nettpack/stage](https://packagist.org/packages/nettpack/stage)
 
 
 #### Instalation
 
 - Composer instalation
-
-		composer require bajzany/table dev-master
-
+````bash
+composer require bajzany/table dev-master
+````
 
 - Register into Nette Application
 
-		extensions:
-    		BajzanyTable: Bajzany\Table\DI\TableExtensions
+````neon
+extensions:
+	BajzanyTable: Bajzany\Table\DI\TableExtensions
+````
+ 	
+- Set translator into table
 
+````neon
+BajzanyTable:
+	translator: Chomenko\Translator\Translator
+````
 
-- Now register into Presenter
+- Now create component table and his interface, for example:
 
+	- ITestTable class
+	````php
+	<?php
+
+    interface ITestTable
+    {
+    
+    	/**
+    	 * @return TestTable
+    	 */
+    	public function create(): TestTable;
+    
+    }
+
+	````
+	
+	- Component have two options, BaseTable and EntityTable:
+	
+	BaseTable:
+	- You must set data manualy ``$rowsCollection->add()``
+	````php
+	<?php
+    
+    use Bajzany\Table\RowsCollection;
+    use Bajzany\Table\Table;
+
+    class TestTable extends Table;
+    {
+    	
 		/**
-		 * @var TableFactory @inject
+		 * @param RowsCollection $rowsCollection
+		 * @throws \Bajzany\Table\Exceptions\TableException
 		 */
-		public $tableFactory;
+		protected function create(RowsCollection $rowsCollection)
+		{
+			$rowsCollection->add(['failure' => '0', 'emailProbe' => 'a']);
+			$rowsCollection->add(['failure' => '1', 'emailProbe' => 'd']);
 		
-
-#### BaseTable
-
-It's very simple Html table object. For creating this component use:
-
-	public function createComponentTable()
-	{
-		$table = $this->tableFactory->createTable();
-		$wrapped = $table->getTableWrapped();
-
-		$wrapped->setAttribute('class','table table-striped');
-		$caption = $wrapped->getCaption();
-		$caption->setText('BASE TABLE');
-
-		$header = $wrapped->getHeader();
-		$header->createItem('head1');
-		$header->createItem('head2');
-		$header->createItem('head3');
-
-		$body = $wrapped->getBody();
-		$row = $body->createRow();
-		$item = $row->createItem('1');
-		$item = $row->createItem('2');
-		$item = $row->createItem('3');
-
-		$row = $body->createRow();
-		$item = $row->createItem('1');
-		$item = $row->createItem('2');
-		$item = $row->createItem('3');
-
-		$footer = $wrapped->getFooter();
-		$item = $footer->createItem('footer1');
-		$item = $footer->createItem('footer2');
-		$item = $footer->createItem('footer3');
-
-
-		return $this->tableFactory->createComponentTable($table);
-	}
-
-or use your row collection
-
-	public function createComponentTable()
-	{
-		$rowsCollection = new RowsCollection();
-		$rowsCollection->add([
-			"name" => "Jan",
-			"surname" => "Novák",
-		]);
-		$rowsCollection->add([
-			"name" => "František",
-			"surname" => "Palacký",
-		]);
-		$rowsCollection->add([
-			"name" => "Antonín",
-			"surname" => "Dvořák",
-		]);
-	
-		$table = $this->tableFactory->createTable($rowsCollection);
-		$column = $table->createColumn("name");
-		$column->setPattern("{{ name }}");
-		$column->setLabel("Name");
-
-		$column = $table->createColumn("surname");
-		$column->setPattern("{{ surname }}");
-		$column->setLabel("Surname");
-
-		return $this->tableFactory->createComponentTable($table);
-	}
-	
-	
-TableWrapped have header, body and footer. Each of this section have children as html item
-
-Render in .latte:
-
-	<div class="box-body">
-		{control table}
-	</div>
-	
-![Table](.docs/image1.PNG?raw=true)
-
-
-#### EntityTable
-
-EntityTable is used for work with entity.
-
-	public function createComponentTableEntity()
-	{
-		// Register table for entity User
-		$table = $this->tableFactory->createEntityTable(User::class);
+			$this->getPaginator()->setPageSize(4);
 		
-		// Paginator section
-		$paginator = $table->getPaginator();
-		$item = $paginator->getPaginatorWrapped()->createItem();
-		$item->getContent()->addHtml(Html::el('')->setText('-1 Léňa'));
-		$table->getPaginator()->setPageSize(2);
+			$this->createColumn("failure")
+				->setSearchable(TRUE)
+				->setLabel("Failure")
+				->setPattern("{{ failure }}")
+				->setSearchSelectOptions([
+					'0' => 'Ne',
+					'1' => 'Ano',
+				])
+				->addFilter([$this->filter, "boolLabel"], ["label-danger", "label-success"]);
 		
-		// Table Wrapped section
-		$wrapped = $table->getTableWrapped();
-		$caption = $wrapped->getCaption();
-		$caption->setText('ENTITY TABLE');
-
-		// TableColum Section
-		$column = $table->createColumn();
-		$column->setLabel('Email');
-		$column->setPattern('Email uzivatele {{ email }}');
-		$column->setFooter('Email');
-		$column->setBodyItemCallable(function (Item $item, User $entity){
-			$item->getParent()->setAttribute('style','background-color:#d42d2d');
-		});
-		$column->setHeaderItemCallable(function (HeaderItem $item){
-			$item->getParent()->setAttribute('style','background-color:#9e0000;color:#FFFFFF;');
-		});
-		$column->setFooterItemCallable(function (Item $item){
-			$item->setAttribute('style','background-color:#9e0000;color:#FFFFFF;');
-		});
-
-		$column = $table->createColumn();
-		$column->setLabel('Aktivni ucet');
-		$column->setBodyItemCallable(function (Item $item, User $entity){
-			$item->setText($entity->isActive() ? 'ANO' : 'NE');
-		});
-		$column->setFooterItemCallable(function (Item $item){
-			$item->setAttribute('style','background-color:#9e9000;color:#FFFFFF;');
-		});
-		$column->setFooter('Aktivni ucet');
-
-		$column = $table->createColumn();
-		$column->setLabel('Avatar');
-		$column->setBodyItemCallable(function (Item $item, User $entity){
-			$image = new Image();
-			$image->setClass('img-responsive');
-			$image->setTooltip('AVATAR');
-			$image->setImage('data:image/png;base64, '.$entity->getAvatarBase64());
-
-			$item->setHtml($image);
-		});
-		$column->setFooterItemCallable(function (Item $item){
-			$item->setAttribute('style','background-color:#1e9000;color:#FFFFFF;');
-		});
-		$column->setFooter('Avatar');
-
-
-		$column = $table->createColumn();
-		$column->setLabel('Actions');
-		$column->setBodyItemCallable(function (Item $item, User $entity){
-			$dropdown = new DropDown();
-
-			$button = $dropdown->getButton();
-			$button->setLabel('AKCE');
-			$button->setClass('btn btn-success');
-
-			$href = new Href('Link','/','link');
-
-			$dropdown->addItem($href);
-
-			$href = new Href('Link2','/','link');
-			$dropdown->addItem($href);
-			$item->setHtml($dropdown);
-		});
-		$column->setFooter('Actions');
-
-
-		return $this->tableFactory->createComponentTable($table);
-	}
+			$this->createColumn("emailProbe")
+				->setSearchable(TRUE)
+				->setSortable(TRUE)
+				->setLabel("Email")
+				->setPattern("{{ emailProbe }}");
+		}
+    
+    }
+	````
 	
-- Register Table Section:
-	- For register entityTable you must first set entity class into $this->tableFactory->createEntityTable(User::class);
+	EntityTable: 
+	- Data into entity table has been set with queryBuilder like ``getEntityClass()``
+	````php
+	<?php
+    
+    use Bajzany\Table\EntityTable;
+    use Bajzany\Table\RowsCollection;
+    
+    class TestEntityTable extends EntityTable 
+    {
+    
+    	/**
+    	 * @return string
+    	 */
+    	public function getEntityClass(): string
+    	{
+    		return EntityClass::class;
+    	}
+    
+    	public function searchActionFailure(EntityTable $table, $selectValue)
+    	{
+    		$table->getQueryBuilder()->andWhere("e.failure LIKE :failure")
+    			->setParameter('failure', '%' . $selectValue . '%');
+    	}
+    
+    	/**
+    	 * @param RowsCollection $rowsCollection
+    	 * @throws \Bajzany\Table\Exceptions\TableException
+    	 */
+    	protected function create(RowsCollection $rowsCollection)
+    	{
+    		$this->addSort("e.date", "DESC");
+    		$this->getPaginator()->setPageSize(4);
+    
+    		$this->createColumn("failure")
+    			->setSearchable(TRUE)
+    			->setSortable(TRUE)
+    			->setLabel("Failure")
+    			->setPattern("{{ failure }}")
+    			->addFilter([$this->filter, "boolLabel"], ["label-danger", "label-success"])
+    			->setSearchSelectOptions([
+    				'0' => 'Ne',
+    				'1' => 'Ano',
+    			])
+    			->onSearchAction[] = [$this, 'searchActionFailure'];
+    
+    		$this->createColumn("emailProbe")
+    			->setSearchable(TRUE)
+    			->setLabel("Email")
+    			->setPattern("{{ emailProbe }}");
+    
+    		$this->createColumn("statusMessage")
+    			->setLabel("Status")
+    			->setPattern("{{ statusMessage }}");
+    
+    		$this->createColumn("ip")
+    			->setLabel("IP")
+    			->setPattern("{{ ip }}");
+    
+    		$this->createColumn("date")
+    			->setLabel("date")
+    			->setSortable(TRUE)
+    			->setPattern("{{ date }}")
+    			->addFilter([$this->filter, "dateTime"]);
+			$this->createColumn("date")
+				->useComponent("customComponent")
+				->onBodyCreate[] = [$this, "dateColumn"];
+			$this->createColumn("option")
+				->onBodyCreate[] = [$this, "optionColumn"];
+		
+			
+    	}
+   	
+		/**
+		 * @param string $name
+    	 * @param EntityClass $entity
+    	 */
+    	public function createComponentCustomComponent($name, EntityClass $entity)
+		{ 
+    		return $this->customComponent->create();
+    	}
+   	
+   	
 
-- Paginator section 
+    	public function optionColumn(Item $item, EntityClass $entity)
+		{
+		}
+   	
+    
+    }
+	````
+- ``getEntityClass`` function:
+	- This will be return class of entity
+
+- In function create you have access to paginator ``$this->getPaginator()`` 
 	- Entity table contain bajzany/paginator, for more detail click on this [link](https://github.com/bajzany/paginator)
 	- You can change paginator pageSize, add another items into list pagination.
 	
-- TableWrapped section
- 	- TableWrapped is same as BaseTable TableWrapped
-
-- TableColumn section
-	- Function $table->createColumn() create new col for table in every row 
+- createColumn function:
+	- Function ``$this->createColumn('identificator')`` create new col for table in every row 
 	- Column have this settings:
-		- setLabel(string)
+		- ``setLabel(string)``
 			 - Label is for th tag in table, it's only name col
-		- setPattern(string)
+		- ``setPattern(string)``
 			- Pattern example( User email {{ email }} ) This show you in field column "User email (specific email from entity user)"
-		- setFooter(string)
+		- ``setFooter(string)``
 			- Footer is same as Label, it's only differently position
-		- setHeaderItemCallable(function(HeaderItem){})
-			- This header function get you in anonymous function HeaderItem. You can edit it. Its nette Html object 
-		- setBodyItemCallable(function(Item, Entity){})
-			- This body function get you in anonymous function Item. You can edit it. Its nette Html object 
-			- Get you so Entity for reading properity and use it for edit Body Item.
-		- setFooterItemCallable(function(Item){})
-			- This footer function get you in anonymous function Item. You can edit it. Its nette Html object 
+		- ``useComponent("customComponent")``
+			- For rendering component into table
+		- CallableFunctions: 
+			- ``onBodyCreate[] = callable``
+				- In Callable get this parameters: Item(HtmlObject), Entity
+			- ``onHeaderCreate[] = callable``
+				- In Callable get this parameters: Item(HtmlObject), Column
+			- ``onFooterCreate[] = callable``
+				- In Callable get this parameters: Item(HtmlObject), Column
+			- ``onSearchAction[] = callable``
+				- Must be set ``setSearchable(TRUE)``
+				- For create select list ``setSearchSelectOptions([])``
+					- for example ``['0' => 'No','1' => 'Yes']``
+				- In Callable get this parameters: Table, InputValue
+			- ``onSortingAction[] = callable``
+				- Must be set ``setSortable(TRUE)``
+				- In Callable get this parameters: Table, SortValue
+			- Entity table have also callable ``onBuildQuery[]`` 
+				- In Callable get this parameters: EntityTable, QuieryBuilder
+
+- Now register into Presenter
+	````php
+	<?php
+	
+	/**
+	 * @var ITestEntityTable @inject
+	 */
+	public $testTable;
+	
+	/**
+	 * @param IGroupTable $groupTable
+	 * @return GroupTable
+	 */
+	public function createComponentTestList(): GroupTable
+	{
+		$table = $testTable->create();
+		return $table;
+	}
+	````
 		
 #### For rendering table use .latte
 
 	<div class="box-body">
-		{control tableEntity}
+		{control testList}
 	</div>
 	
 	{*Paginator section*}
 	<div class="box-footer clearfix">
-		{control tableEntity:paginator}
+		{control testList:paginator}
 	</div>
 
 #### For register subscriber on table events
 
-- Use @Tag annotation for register new listener on Table {TableExtensions::TAG_EVENT=User::class} - User::class is entity which you can listening
-- List of events you can implement into function getSubscribedEvents
-- EntityTable::EVENT_ON_BUILD_QUERY - this is event when will be call before render table, just change queryBuilder query for specific select entities
-
-		<?php
-		namespace Bundles\User\Model;
-		
-		use Bajzany\Table\EntityTable;
-		use Bajzany\Table\Events\ITableSubscriber;
-		use Bundles\User\Entity\User;
-		use Chomenko\AutoInstall\AutoInstall;
-		use Chomenko\AutoInstall\Config\Tag;
-		use Bajzany\Table\DI\TableExtensions;
-		
-		/**
-		 * @Tag({TableExtensions::TAG_EVENT=User::class})
-		 */
-		class UserTableSubscriber implements ITableSubscriber, AutoInstall
-		{
-		
-			/**
-			 * @return array
-			 */
-			public function getSubscribedEvents(): array
-			{
-				if (php_sapi_name() == "cli") {
-					return [];
-				}
-				return [
-					EntityTable::EVENT_ON_BUILD_QUERY => "onBuildQuery",
-				];
-			}
-		
-			public function onBuildQuery(EntityTable $entityTable)
-			{
-			}
-		
-		}
-
-
-#### For register and call component into table please use this:
-
-- In function create call addRegisterComponent function
-
-		use Bajzany\Table\TableComponent;
-
-		/**
-    	 * @return EntityTable
-    	 * @throws \Bajzany\Table\Exceptions\TableException
-    	 */
-    	public function create(): EntityTable
-    	{
-    		$table = $this->tableFactory->createEntityTable(EntityName::class);
-    		$tableComponent = new TableComponent(IActionsControl::class);
-    		$table->addRegisterComponent('form', $tableComponent);
-    		
-    		
-- onBodyCreate function use $table->getComponentHtml('form', $entity->getId(), [...args]):
-	
-		->onBodyCreate(function (Item $item, StockItem $entity){
-			$table = $item->getTable();
-			if (!$table instanceof EntityTable) {
-				return;
-			}
-			
-			$html = $table->getComponentHtml('form', $entity->getId(), [...args]);	
-			$item->addHtml($html);
-		});
-		
-		
-#### Table have search function on columns 
--  Classic search with base event (Search functionality by LIKE key "toEmails" in this entity)
+- Use @Tag annotation for register new listener on Table ``{TableExtensions::TAG_EVENT=EntityClass::class}`` - EntityClass::class is entity which you can listening
+- ``onBuildQuery(EntityTable $entityTable)`` - this is event when will be call before render table, just change queryBuilder query for specific select entities
 ````php
-$table->createSearchTextColumn("toEmails")
-	->setLabel("To Emails")
-	->onBodyCreate(function (Item $item, Email $entity) {
-		foreach ($entity->getToEmails() as $email) {
-			$emailText = Html::el("span", [
-				"class" => "label label-success",
-			])->setText($email);
-			$item->addHtml($emailText)->addHtml("<br>");
-		}
-	});
-````
-- Or you can write own event on searchAction
-````php
-$table->createSearchTextColumn("sender")
-	->setLabel("Sender")
-	->onSearchAction(function (EntityTable\SearchTextColumn $column) use ($qb){
-		$qb
-			->leftJoin('e.sender', 'user')
-			->andWhere('user.email LIKE :email')
-			->setParameter('email', '%'.$column->getSelectedValue().'%');
-	})
-	->onBodyCreate(function (Item $item, Email $entity) {
-		$sender = Html::el("span", [
-			"class" => "label label-success",
-		])->setText($entity->getSender()->getEmail());
-		$item->addHtml($sender)->addHtml("<br>");
-	});
-````
-#### For create link with persistent parameters into paginator and searchColumns please use function createLink in tableObject:
+<?php
+namespace Bundles\User\Model;
 
-	->onBodyCreate(function (Item $item) {
-		$url = $item->getTable()->createLink(':Admin:Dashboard:default', ['id' => 5]);
-	});
+use Bajzany\Table\EntityTable;
+use Bajzany\Table\Listener\ITableSubscriber;
+use Chomenko\AutoInstall\Config\Tag;
+use Bajzany\Table\DI\TableExtensions;
+
+/**
+ * @Tag({TableExtensions::TAG_EVENT=EntityClass::class})
+ */
+class UserTableSubscriber implements ITableSubscriber
+{
+
+	public function onBuildQuery(EntityTable $entityTable)
+	{
+	}
+
+}
+````
