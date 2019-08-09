@@ -118,6 +118,11 @@ abstract class Table extends Control
 	private $criteria;
 
 	/**
+	 * @var string|null
+	 */
+	private $snippetName = NULL;
+
+	/**
 	 * @param Session $session
 	 * @param TableEvents $tableEvents
 	 */
@@ -173,6 +178,9 @@ abstract class Table extends Control
 	public function attached($presenter)
 	{
 		parent::attached($presenter);
+		if ($this->presenter->isAjax()) {
+			$this->presenter->redrawControl($this->snippetName);
+		}
 		if ($this->translator) {
 			$this->template->setTranslator($this->translator);
 		}
@@ -599,6 +607,21 @@ abstract class Table extends Control
 	public function getCriteria(): Criteria
 	{
 		return $this->criteria;
+	}
+
+	/**
+	 * @param string|null $snippetName
+	 * @return $this
+	 */
+	public function setSnippetName(?string $snippetName)
+	{
+		$this->snippetName = $snippetName;
+		return $this;
+	}
+
+	public function enableAjaxPaginator()
+	{
+		$this->getPaginator()->getPaginatorWrapped()->setLinkClass('ajax');
 	}
 
 }
