@@ -18,6 +18,7 @@ use Bajzany\Table\Listener\TableEvents;
 use Bajzany\Table\TableObjects\Item;
 use Bajzany\Table\TableObjects\TableWrapped;
 use Doctrine\Common\Collections\Criteria;
+use Nette\Application\UI\Component;
 use Nette\Application\UI\Control;
 use Nette\Application\UI\Presenter;
 use Nette\ComponentModel\IComponent;
@@ -381,17 +382,32 @@ abstract class Table extends Control
 	public function getComponent($name, $throw = TRUE, $args = [])
 	{
 		$exp = explode("_", $name);
-
 		if (count($exp) == 2 && !isset($this->components[$name])) {
+
 			$componentName = $exp[0];
 			$identifier = $exp[1];
+			$nextComponentName = NULL;
+
+			if (strpos($identifier, '-') !== false) {
+				$ex = explode("-", $identifier);
+				$identifier = $ex[0];
+				$nextComponentName = $ex[1];
+			}
 
 			$ucName = ucfirst($componentName);
 			$method = 'createComponent' . $ucName;
 			$data = $this->rowsCollection->get($identifier);
 
 			if ($ucName !== $componentName && method_exists($this, $method) && (new \ReflectionMethod($this, $method))->getName() === $method) {
+				/** @var Component $component */
 				$component = $this->$method($componentName, $data);
+				if ($nextComponentName) {
+					$name = str_replace('-'.$nextComponentName, '', $name);
+					$this->addComponent($component, $name);
+					$nextComponent = $component->getComponent($nextComponentName);
+					return $nextComponent;
+				}
+
 				$this->addComponent($component, $name);
 				return $component;
 			}
@@ -400,7 +416,6 @@ abstract class Table extends Control
 		$component = parent::getComponent($name, $throw);
 		return $component;
 	}
-
 
 	/**
 	 * @return TableWrapped
