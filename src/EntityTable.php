@@ -7,13 +7,11 @@
 
 namespace Bajzany\Table;
 
-use Bajzany\Paginator\IPaginationControl;
 use Bajzany\Paginator\QueryPaginator;
 use Bajzany\Table\Listener\TableEvents;
 use Doctrine\Common\Persistence\ObjectRepository;
 use Kdyby\Doctrine\EntityManager;
 use Kdyby\Doctrine\QueryBuilder;
-use Nette\Http\Session;
 
 /**
  * @method onBuildQuery(EntityTable $entityTable)
@@ -66,9 +64,11 @@ abstract class EntityTable extends Table
 	 */
 	private $tableEvents;
 
-	public function __construct(Session $session, TableEvents $tableEvents)
+	/**
+	 * @param TableEvents $tableEvents
+	 */
+	public function injectTableEvents(TableEvents $tableEvents)
 	{
-		parent::__construct($session);
 		$this->tableEvents = $tableEvents;
 	}
 
