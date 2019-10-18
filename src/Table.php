@@ -14,7 +14,6 @@ use Bajzany\Table\ColumnDriver\ColumnDriver;
 use Bajzany\Table\EntityTable\Column;
 use Bajzany\Table\EntityTable\IColumn;
 use Bajzany\Table\Exceptions\TableException;
-use Bajzany\Table\Listener\TableEvents;
 use Bajzany\Table\TableObjects\Item;
 use Bajzany\Table\TableObjects\TableWrapped;
 use Doctrine\Common\Collections\Criteria;
@@ -123,18 +122,22 @@ abstract class Table extends Control
 	 */
 	private $snippetName = NULL;
 
-	/**
-	 * @param Session $session
-	 * @param TableEvents $tableEvents
-	 */
-	public function __construct(Session $session)
+	public function __construct()
 	{
 		$this->tableWrapped = new TableWrapped($this);
 		$this->paginator = new Paginator();
 		$this->columnDriver = new ColumnDriver();
 		$this->filter = new Filters($this);
-		$this->session = $session;
 		$this->criteria = new Criteria();
+		parent::__construct();
+	}
+
+	/**
+	 * @param Session $session
+	 */
+	public function injectSession(Session $session)
+	{
+		$this->session = $session;
 	}
 
 	/**
