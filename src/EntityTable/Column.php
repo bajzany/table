@@ -360,17 +360,29 @@ class Column implements IColumn
 		$inputName = $this->getSearchInputName();
 		$defaultValue = $this->getSelectedSearchValue();
 		$componentName = $this->getComponentName($control);
+
 		if (!empty($this->getSearchSelectOptions())) {
+
+			$titleDescription = Html::el('label', [
+				'class' => 'searchTitle',
+			]);
+			if ($control instanceof Table) {
+				$titleDescription->setHtml($control->getTranslator()->translate($this->getLabel()));
+			} else {
+				$titleDescription->setText($this->getLabel());
+			}
+
 			$select = TableHtml::el('select', [
 				'name' => $inputName,
-				'placeholder' => $this->getLabel(),
-				'class' => 'form-control searchTable',
+				'class' => 'searchTable floating-select',
 				'data-url' => $control->link('this'),
 				'data-control' => $componentName,
+				'onclick' => "this.setAttribute('value', this.value);",
+				'value' => $defaultValue
 			]);
 
 			$defaultOption = TableHtml::el('option', ['value' => '']);
-			$defaultOption->setText($this->getKey());
+
 			$select->addHtml($defaultOption);
 
 			foreach ($this->getSearchSelectOptions() as $name => $title) {
@@ -383,17 +395,55 @@ class Column implements IColumn
 				$select->addHtml($opt);
 			}
 
-			$headerItem->addHtml($select);
+			$inputContainer = Html::el('div', [
+				'class' => 'floating-form',
+			]);
+
+			$inputWrapped = Html::el('div', [
+				'class' => 'floating-label',
+			]);
+
+			$inputContainer->addHtml($inputWrapped);
+
+
+			$inputWrapped->addHtml($select);
+			$inputWrapped->addHtml("<span class=\"highlight\"></span>");
+			$inputWrapped->addHtml($titleDescription);
+
+			$headerItem->addHtml($inputContainer);
 		} else {
+
+			$titleDescription = Html::el('label');
+			if ($control instanceof Table) {
+				$titleDescription->setHtml($control->getTranslator()->translate($this->getLabel()));
+			} else {
+				$titleDescription->setText($this->getLabel());
+			}
+
 			$field = TableHtml::el('input', [
 				'name' => $inputName,
-				'placeholder' => $this->getLabel(),
-				'class' => 'form-control searchTable',
+				'placeholder' => ' ',
+				'class' => 'searchTable floating-input',
 				'data-url' => $control->link('this'),
 				'data-control' => $componentName,
 				'value' => $defaultValue
 			]);
-			$headerItem->addHtml($field);
+
+			$inputContainer = Html::el('div', [
+				'class' => 'floating-form',
+			]);
+
+			$inputWrapped = Html::el('div', [
+				'class' => 'floating-label',
+			]);
+
+			$inputContainer->addHtml($inputWrapped);
+
+			$inputWrapped->addHtml($field);
+			$inputWrapped->addHtml("<span class=\"highlight\"></span>");
+			$inputWrapped->addHtml($titleDescription);
+
+			$headerItem->addHtml($inputContainer);
 		}
 	}
 
