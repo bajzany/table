@@ -378,7 +378,7 @@ class Column implements IColumn
 				'data-url' => $control->link('this'),
 				'data-control' => $componentName,
 				'onclick' => "this.setAttribute('value', this.value);",
-				'value' => $defaultValue
+				'value' => $defaultValue ? $defaultValue : ''
 			]);
 
 			$defaultOption = TableHtml::el('option', ['value' => '']);
@@ -566,6 +566,9 @@ class Column implements IColumn
 	 */
 	public function renderSortableColumn(HeaderItem $headerItem, Control $control)
 	{
+
+		$headerItem->setAttribute('class', 'withSortable');
+
 		$inputName = $this->getSoringInputName();
 		$defaultValue = $this->getSelectedSortValue();
 		$componentName = $this->getComponentName($control);
