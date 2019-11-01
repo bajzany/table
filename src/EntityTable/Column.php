@@ -378,7 +378,7 @@ class Column implements IColumn
 				'data-url' => $control->link('this'),
 				'data-control' => $componentName,
 				'onclick' => "this.setAttribute('value', this.value);",
-				'value' => $defaultValue ? $defaultValue : ''
+				'value' => $defaultValue !== '' ? $defaultValue : ''
 			]);
 
 			$defaultOption = TableHtml::el('option', ['value' => '']);
