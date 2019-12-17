@@ -372,13 +372,18 @@ class Column implements IColumn
 				$titleDescription->setText($this->getLabel());
 			}
 
+			$def = $defaultValue;
+			if ($def == NULL) {
+				$def = '';
+			}
+
 			$select = TableHtml::el('select', [
 				'name' => $inputName,
 				'class' => 'searchTable floating-select',
 				'data-url' => $control->link('this'),
 				'data-control' => $componentName,
 				'onclick' => "this.setAttribute('value', this.value);",
-				'value' => $defaultValue !== '' ? $defaultValue : ''
+				'value' => $def !== '' ? $def : ''
 			]);
 
 			$defaultOption = TableHtml::el('option', ['value' => '']);
